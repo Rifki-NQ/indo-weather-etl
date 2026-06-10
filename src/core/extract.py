@@ -9,7 +9,7 @@ from src.core.exceptions import MaxRetryAttemptError
 logger = logging.getLogger(__name__)
 
 
-class ExtractWeather:
+class ExtractForecast:
     BASE_URL = "https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4="
     REQUEST_TIMEOUT = 3.0
     REQUEST_DELAY = 1.0
@@ -20,9 +20,9 @@ class ExtractWeather:
         self.client = client
 
     async def get_forecast(
-        self, regional_code: str
+        self, adm4_code: str
     ) -> tuple[list[RawForecast], RawLocation]:
-        main_url = self.BASE_URL + regional_code
+        main_url = self.BASE_URL + adm4_code
         response = await self._request_with_retry(
             self._request, main_url, self.RETRY_MAX_ATTEMPT, self.RETRY_DELAY
         )
