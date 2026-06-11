@@ -1,8 +1,9 @@
 import httpx
 import asyncio
 import logging
+from pydantic import ValidationError
 from typing import Any
-from collections.abc import Callable, Awaitable
+from collections.abc import Callable, Awaitable, AsyncIterable
 from src.core.models.raw_model import RawForecast, RawLocation
 from src.core.exceptions import MaxRetryAttemptError
 
@@ -21,15 +22,16 @@ class ExtractForecast:
 
     async def get_forecast(
         self, adm4_code: str
-    ) -> tuple[list[RawForecast], RawLocation]:
+    ) -> tuple[RawLocation, AsyncIterable[RawForecast]]:
         main_url = self.BASE_URL + adm4_code
         response = await self._request_with_retry(
             self._request, main_url, self.RETRY_MAX_ATTEMPT, self.RETRY_DELAY
         )
         data = response.json()["data"][0]
-        raw_forecast = self._unpack_forecast_data(data["cuaca"])
-        raw_location = data["lokasi"]
-        return [RawForecast(**r) for r in raw_forecast], RawLocation(**raw_location)
+        raw_location = RawLocation(**data["lokasi"])
+        raw_forecast = self._convert_all_forecast(data["cuaca"])
+        del data
+        return raw_location, raw_forecast
 
     async def _request_with_retry(
         self,
@@ -52,6 +54,7 @@ class ExtractForecast:
                     )
                     if retry_after:
                         await asyncio.sleep(int(retry_after))
+                        continue
             except httpx.HTTPError as e:
                 logger.warning(f"Extractor: http error occured: {repr(e)}")
             logger.info(
@@ -67,11 +70,31 @@ class ExtractForecast:
         await asyncio.sleep(self.REQUEST_DELAY)
         return response
 
-    def _unpack_forecast_data(
+    async def _convert_all_forecast(
         self, forecast_data: list[list[dict[str, Any]]]
-    ) -> list[dict[str, Any]]:
-        new_list: list[dict[str, Any]] = []
+    ) -> AsyncIterable[RawForecast]:
+        """
+        flatten the two depth nested list into one depth flat list
+        then convert to RawForecast for each yield,
+        while giving the event loop control with: await asyncio.sleep(0)
+        """
         for inner_list in forecast_data:
             for item in inner_list:
-                new_list.append(dict(item))
-        return new_list
+                converted_forecast = self._convert_single_forecast(item)
+                if converted_forecast is None:
+                    continue
+                yield converted_forecast
+                await asyncio.sleep(0)
+
+    def _convert_single_forecast(
+        self, single_forecast_data: dict[str, Any]
+    ) -> RawForecast | None:
+        """
+        validate then convert raw_forecast into pydantic model
+        return None if the validation failed
+        """
+        try:
+            return RawForecast(**single_forecast_data)
+        except ValidationError as e:
+            logger.warning(f"Extractor: skipping malformed forecast entry: {e}")
+            return None
