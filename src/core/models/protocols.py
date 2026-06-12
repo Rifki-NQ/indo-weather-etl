@@ -7,10 +7,10 @@ from src.core.models.domain_model import ForecastModel
 class ExtractProtocol(Protocol):
     async def get_forecast(
         self, adm4_code: str
-    ) -> tuple[list[RawForecast], RawLocation]: ...
+    ) -> tuple[RawLocation, AsyncIterable[RawForecast]]: ...
 
 
 class TransformProtocol(Protocol):
     def get_transformed_forecast(
-        self, amd4_code: str
+        self,
     ) -> tuple[RawLocation, AsyncIterable[ForecastModel]]: ...
