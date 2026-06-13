@@ -2,7 +2,7 @@ import asyncio
 import logging
 from collections.abc import AsyncIterable
 from src.core.models.raw_model import RawLocation, RawForecast
-from src.core.models.domain_model import ForecastModel
+from src.core.models.domain_model import LocationModel, ForecastModel
 from src.core.models.protocols import ExtractProtocol
 
 logger = logging.getLogger(__name__)
@@ -15,9 +15,11 @@ class TransformForecast:
 
     async def get_transformed_forecast(
         self,
-    ) -> tuple[RawLocation, AsyncIterable[ForecastModel]]:
+    ) -> tuple[LocationModel, AsyncIterable[ForecastModel]]:
         raw_location, raw_forecast = await self.extractor.get_forecast(self.adm4_code)
-        return raw_location, self._transform_all_forecast(raw_forecast)
+        return self._transform_forecast_location(
+            raw_location
+        ), self._transform_all_forecast(raw_forecast)
 
     async def _transform_all_forecast(
         self, raw_forecast: AsyncIterable[RawForecast]
@@ -47,4 +49,24 @@ class TransformForecast:
             wind_speed=single_raw_forecast.ws,
             humidity=single_raw_forecast.hu,
             visibility=single_raw_forecast.vs,
+        )
+
+    def _transform_forecast_location(self, raw_location: RawLocation) -> LocationModel:
+        """
+        throw away 'type' field from raw_location,
+        unify all adm codes into single digits as 'adm' field,
+        'adm4_code' is native adm code used to talk to the api
+        """
+        adm_codes = [int(adm_code) for adm_code in raw_location.adm4.split(".")]
+        adm = int(raw_location.adm4.replace(".", ""))
+        return LocationModel(
+            adm=adm,
+            adm1=adm_codes[0],
+            adm2=adm_codes[1],
+            adm3=adm_codes[2],
+            adm4=adm_codes[3],
+            adm4_code=self.adm4_code,
+            **raw_location.model_dump(
+                exclude={"adm", "adm1", "adm2", "adm3", "adm4", "adm4_code", "type"}
+            ),
         )

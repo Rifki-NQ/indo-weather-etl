@@ -3,6 +3,23 @@ from datetime import datetime
 
 
 @dataclass
+class LocationModel:
+    adm: int  # adm4 code dumped into one unified digits
+    adm1: int
+    adm2: int
+    adm3: int
+    adm4: int
+    adm4_code: str  # native adm4 code
+    provinsi: str
+    kotkab: str
+    kecamatan: str
+    desa: str
+    lon: float
+    lat: float
+    timezone: str
+
+
+@dataclass
 class ForecastModel:
     forecast_datetime: datetime  # datetime for the weather forecast
     analysis_datetime: datetime  # datetime for the forecast analysis

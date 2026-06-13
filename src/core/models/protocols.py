@@ -1,7 +1,7 @@
 from typing import Protocol
 from collections.abc import AsyncIterable
 from src.core.models.raw_model import RawLocation, RawForecast
-from src.core.models.domain_model import ForecastModel
+from src.core.models.domain_model import LocationModel, ForecastModel
 
 
 class ExtractProtocol(Protocol):
@@ -11,6 +11,6 @@ class ExtractProtocol(Protocol):
 
 
 class TransformProtocol(Protocol):
-    def get_transformed_forecast(
+    async def get_transformed_forecast(
         self,
-    ) -> tuple[RawLocation, AsyncIterable[ForecastModel]]: ...
+    ) -> tuple[LocationModel, AsyncIterable[ForecastModel]]: ...
