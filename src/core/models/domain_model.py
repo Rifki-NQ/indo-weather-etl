@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from datetime import datetime
 
 
@@ -18,6 +18,9 @@ class LocationModel:
     lat: float
     timezone: str
 
+    def as_dict(self) -> dict[str, str | int | float]:
+        return asdict(self)
+
 
 @dataclass
 class ForecastModel:
@@ -35,3 +38,6 @@ class ForecastModel:
     wind_speed: float  # km/h unit
     humidity: int  # percentage
     visibility: int  # meters unit
+
+    def as_dict(self) -> dict[str, str | int | float | datetime]:
+        return asdict(self)
