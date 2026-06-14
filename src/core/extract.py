@@ -24,6 +24,8 @@ class ExtractForecast:
         self, adm4_code: str
     ) -> tuple[RawLocation, AsyncIterable[RawForecast]]:
         main_url = self.BASE_URL + adm4_code
+        self.adm4_code = adm4_code
+        logger.info(f"Extractor: extracting weatcher forecast on {adm4_code}")
         response = await self._request_with_retry(
             self._request, main_url, self.RETRY_MAX_ATTEMPT, self.RETRY_DELAY
         )
@@ -83,6 +85,7 @@ class ExtractForecast:
                 converted_forecast = self._convert_single_forecast(item)
                 if converted_forecast is None:
                     continue
+                logger.debug(f"Extractor: forecast data for {converted_forecast.local_datetime} on {self.adm4_code} validated")
                 yield converted_forecast
                 await asyncio.sleep(0)
 
