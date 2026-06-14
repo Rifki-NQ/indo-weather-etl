@@ -58,15 +58,13 @@ class TransformForecast:
         'adm4_code' is native adm code used to talk to the api
         """
         adm_codes = [int(adm_code) for adm_code in raw_location.adm4.split(".")]
-        adm = int(raw_location.adm4.replace(".", ""))
         return LocationModel(
-            adm=adm,
             adm1=adm_codes[0],
             adm2=adm_codes[1],
             adm3=adm_codes[2],
             adm4=adm_codes[3],
             adm4_code=self.adm4_code,
             **raw_location.model_dump(
-                exclude={"adm", "adm1", "adm2", "adm3", "adm4", "adm4_code", "type"}
+                exclude={"adm1", "adm2", "adm3", "adm4", "adm4_code", "type"}
             ),
         )

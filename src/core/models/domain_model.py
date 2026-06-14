@@ -4,7 +4,6 @@ from datetime import datetime
 
 @dataclass
 class LocationModel:
-    adm: int  # adm4 code dumped into one unified digits
     adm1: int
     adm2: int
     adm3: int

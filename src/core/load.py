@@ -9,6 +9,7 @@ from sqlalchemy import (
     String,
     Float,
     DateTime,
+    ForeignKey,
 )
 from sqlalchemy.dialects.sqlite import insert
 from src.core.models.domain_model import LocationModel, ForecastModel
@@ -70,12 +71,11 @@ class LoadForecast:
         self.locations_table = Table(
             "forecast_location",
             self.metadata,
-            Column("adm", Integer(), primary_key=True),
+            Column("adm4_code", String(), primary_key=True),
             Column("adm1", Integer()),
             Column("adm2", Integer()),
             Column("adm3", Integer()),
             Column("adm4", Integer()),
-            Column("adm4_code", String()),
             Column("provinsi", String()),
             Column("kotkab", String()),
             Column("kecamatan", String()),
@@ -89,9 +89,14 @@ class LoadForecast:
         self.forecast_table = Table(
             "weather_forecast",
             self.metadata,
+            Column(
+                "adm4_code",
+                String(),
+                ForeignKey("forecast_location.adm4_code"),
+                primary_key=True,
+            ),
             Column("forecast_datetime", DateTime(), primary_key=True),
             Column("analysis_datetime", DateTime()),
-            Column("adm4_code", String(), primary_key=True),
             Column("temperature", Integer()),
             Column("total_cloud_coverage", Integer()),
             Column("weather", Integer()),
