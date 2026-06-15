@@ -99,7 +99,7 @@ class LoadForecast:
             Column("analysis_datetime", DateTime()),
             Column("temperature", Integer()),
             Column("total_cloud_coverage", Integer()),
-            Column("weather", Integer()),
+            Column("total_precipitation", Float()),
             Column("weather_description", String()),
             Column("weather_description_eng", String()),
             Column("wind_direction_degree", Integer()),

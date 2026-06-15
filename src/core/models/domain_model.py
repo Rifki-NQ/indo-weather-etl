@@ -27,8 +27,8 @@ class ForecastModel:
     analysis_datetime: datetime  # datetime for the forecast analysis
     adm4_code: str  # district level four code, the forecast location
     temperature: int  # temprature in celcius
-    total_cloud_coverage: int  # percentage
-    weather: int  # consider making this enum or point to other table
+    total_cloud_coverage: int  # percentage unit
+    total_precipitation: float  # mm unit
     weather_description: str
     weather_description_eng: str
     wind_direction_degree: int

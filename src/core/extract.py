@@ -25,7 +25,7 @@ class ExtractForecast:
     ) -> tuple[RawLocation, AsyncIterable[RawForecast]]:
         main_url = self.BASE_URL + adm4_code
         self.adm4_code = adm4_code
-        logger.info(f"Extractor: extracting weatcher forecast on {adm4_code}")
+        logger.info(f"Extractor: extracting weather forecast on {adm4_code}")
         response = await self._request_with_retry(
             self._request, main_url, self.RETRY_MAX_ATTEMPT, self.RETRY_DELAY
         )

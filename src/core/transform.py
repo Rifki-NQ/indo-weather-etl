@@ -40,7 +40,7 @@ class TransformForecast:
             adm4_code=self.adm4_code,
             temperature=single_raw_forecast.t,
             total_cloud_coverage=single_raw_forecast.tcc,
-            weather=single_raw_forecast.weather,
+            total_precipitation=single_raw_forecast.tp,
             weather_description=single_raw_forecast.weather_desc,
             weather_description_eng=single_raw_forecast.weather_desc_en,
             wind_direction_degree=single_raw_forecast.wd_deg,
