@@ -19,9 +19,9 @@ logger = logging.getLogger(__name__)
 
 
 class LoadForecast:
-    def __init__(self, transformer: TransformProtocol) -> None:
+    def __init__(self, transformer: TransformProtocol, db_url: str) -> None:
         self.transformer = transformer
-        self.engine = create_engine("sqlite:///database/data.db")
+        self.engine = create_engine(db_url)
         self.metadata = MetaData()
         self._define_forecast_location_table()
         self._define_forecast_table()
