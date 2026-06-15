@@ -24,14 +24,13 @@ class ExtractForecast:
         self, adm4_code: str
     ) -> tuple[RawLocation, AsyncIterable[RawForecast]]:
         main_url = self.BASE_URL + adm4_code
-        self.adm4_code = adm4_code
         logger.info(f"Extractor: extracting weather forecast on {adm4_code}")
         response = await self._request_with_retry(
             self._request, main_url, self.RETRY_MAX_ATTEMPT, self.RETRY_DELAY
         )
         data = response.json()["data"][0]
         raw_location = RawLocation(**data["lokasi"])
-        raw_forecast = self._convert_all_forecast(data["cuaca"])
+        raw_forecast = self._convert_all_forecast(data["cuaca"], adm4_code)
         del data
         return raw_location, raw_forecast
 
@@ -73,7 +72,9 @@ class ExtractForecast:
         return response
 
     async def _convert_all_forecast(
-        self, forecast_data: list[list[dict[str, Any]]]
+        self,
+        forecast_data: list[list[dict[str, Any]]],
+        adm4_code: str,
     ) -> AsyncIterable[RawForecast]:
         """
         flatten the two depth nested list into one depth flat list
@@ -85,7 +86,9 @@ class ExtractForecast:
                 converted_forecast = self._convert_single_forecast(item)
                 if converted_forecast is None:
                     continue
-                logger.debug(f"Extractor: forecast data for {converted_forecast.local_datetime} on {self.adm4_code} validated")
+                logger.debug(
+                    f"Extractor: forecast data for {converted_forecast.local_datetime} on {adm4_code} validated"
+                )
                 yield converted_forecast
                 await asyncio.sleep(0)
 

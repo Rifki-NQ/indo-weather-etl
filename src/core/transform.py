@@ -54,7 +54,6 @@ class TransformForecast:
     def _transform_forecast_location(self, raw_location: RawLocation) -> LocationModel:
         """
         throw away 'type' field from raw_location,
-        unify all adm codes into single digits as 'adm' field,
         'adm4_code' is native adm code used to talk to the api
         """
         adm_codes = [int(adm_code) for adm_code in raw_location.adm4.split(".")]
