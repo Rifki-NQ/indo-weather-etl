@@ -12,37 +12,56 @@ from sqlalchemy import (
     ForeignKey,
 )
 from sqlalchemy.dialects.sqlite import insert
+from src.core.models.contexts import DBContext
 from src.core.models.domain_model import LocationModel, ForecastModel
 from src.core.models.protocols import TransformProtocol
+from src.core.exceptions import DBNotInitializedError
 
 logger = logging.getLogger(__name__)
 
 
 class LoadForecast:
-    def __init__(self, transformer: TransformProtocol, db_url: str) -> None:
+    def __init__(self, transformer: TransformProtocol) -> None:
         self.transformer = transformer
-        self.engine = create_engine(db_url)
-        self.metadata = MetaData()
-        self._define_forecast_location_table()
-        self._define_forecast_table()
-        self.metadata.create_all(self.engine)  # create all tables
+        self._db: DBContext | None = None
+
+    def setup_db(self, db_url: str) -> None:
+        """Must be called before load_transformed_forecast()."""
+        engine = create_engine(db_url)
+        metadata = MetaData()
+        location_table = self._define_forecast_location_table(metadata)
+        forecast_table = self._define_forecast_table(metadata)
+        metadata.create_all(engine)
+        self._db = DBContext(engine, location_table, forecast_table)
 
     async def load_transformed_forecast(self) -> None:
+        db = self._get_db()
         (
             forecast_location,
             weather_forecast,
         ) = await self.transformer.get_transformed_forecast()
-        with self.engine.connect() as conn:
-            self._insert_or_ignore_location(conn, forecast_location)
+        with db.engine.connect() as conn:
+            self._insert_or_ignore_location(conn, db.location_table, forecast_location)
             async for single_forecast in weather_forecast:
-                self._insert_or_replace_forecast(conn, single_forecast)
+                self._insert_or_replace_forecast(
+                    conn, db.forecast_table, single_forecast
+                )
             conn.commit()
             logger.info(f"Load: forecast for {forecast_location.adm4_code} commited")
 
+    def _get_db(self) -> DBContext:
+        """
+        methods that need db atttibute need get through here,
+        raises error if DBContext has not initiated through setup_db method
+        """
+        if self._db is None:
+            raise DBNotInitializedError("setup_db() has not called yet")
+        return self._db
+
     def _insert_or_ignore_location(
-        self, conn: Connection, location_data: LocationModel
+        self, conn: Connection, location_table: Table, location_data: LocationModel
     ) -> None:
-        stmt = insert(self.locations_table).values(**location_data.as_dict())
+        stmt = insert(location_table).values(**location_data.as_dict())
         stmt = stmt.on_conflict_do_nothing()
         result = conn.execute(stmt)
         if result.rowcount == 0:
@@ -55,10 +74,10 @@ class LoadForecast:
         )
 
     def _insert_or_replace_forecast(
-        self, conn: Connection, forecast_data: ForecastModel
+        self, conn: Connection, forecast_table: Table, forecast_data: ForecastModel
     ) -> None:
         stmt = (
-            insert(self.forecast_table)
+            insert(forecast_table)
             .prefix_with("OR REPLACE")
             .values(**forecast_data.as_dict())
         )
@@ -67,10 +86,10 @@ class LoadForecast:
             f"Load(forecast_table): insert or replace forecast: {forecast_data.forecast_datetime} on {forecast_data.adm4_code}"
         )
 
-    def _define_forecast_location_table(self) -> None:
-        self.locations_table = Table(
+    def _define_forecast_location_table(self, metadata: MetaData) -> Table:
+        return Table(
             "forecast_location",
-            self.metadata,
+            metadata,
             Column("adm4_code", String(), primary_key=True),
             Column("adm1", Integer()),
             Column("adm2", Integer()),
@@ -85,10 +104,10 @@ class LoadForecast:
             Column("timezone", String()),
         )
 
-    def _define_forecast_table(self) -> None:
-        self.forecast_table = Table(
+    def _define_forecast_table(self, metadata: MetaData) -> Table:
+        return Table(
             "weather_forecast",
-            self.metadata,
+            metadata,
             Column(
                 "adm4_code",
                 String(),

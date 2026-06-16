@@ -20,7 +20,9 @@ def setup_logging() -> None:
     os.makedirs(LOGS_FOLDER, exist_ok=True)
 
     # define log filename, which is the datetime when the app run
-    LOG_FILENAME = Path(f"{LOGS_FOLDER}/{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.log")
+    LOG_FILENAME = Path(
+        f"{LOGS_FOLDER}/{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.log"
+    )
 
     # define loggers level
     LOGS_LEVEL = logging.DEBUG
@@ -45,25 +47,28 @@ def setup_argparse() -> argparse.Namespace:
     parser.add_argument("--adm4", type=str, required=True)
     return parser.parse_args()
 
+
 def setup_db_url_and_path(adm4_code: str) -> str:
     # define database url, which is sqlite currently
     DB_URL = "sqlite:///"
-    
+
     # create folder for db if not exists
     DB_FOLDER = Path("database")
     os.makedirs(DB_FOLDER, exist_ok=True)
-    
+
     # define db filename, which is based on the adm4_code
-    DB_FILENAME = (F"{DB_FOLDER}/{adm4_code}_weather_forecast.db")
-    
+    DB_FILENAME = f"{DB_FOLDER}/{adm4_code}_weather_forecast.db"
+
     return DB_URL + DB_FILENAME
+
 
 async def run_app(adm4_code: str, db_url: str) -> None:
     logger.info("App started")
     async with AsyncClient() as client:
         extractor = ExtractForecast(client)
         transformer = TransformForecast(extractor, adm4_code)
-        loader = LoadForecast(transformer, db_url)
+        loader = LoadForecast(transformer)
+        loader.setup_db(db_url)
         await loader.load_transformed_forecast()
     logger.info("App finished successfully")
 
