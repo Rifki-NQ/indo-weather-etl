@@ -1,4 +1,3 @@
-import os
 import sys
 import asyncio
 import logging
@@ -17,7 +16,8 @@ logger = logging.getLogger(__name__)
 def setup_logging() -> None:
     # create folder for logs if not exists
     LOGS_FOLDER = Path("logs")
-    os.makedirs(LOGS_FOLDER, exist_ok=True)
+    LOGS_FOLDER.mkdir(exist_ok=True)
+    
 
     # define log filename, which is the datetime when the app run
     LOG_FILENAME = Path(
@@ -55,7 +55,7 @@ def setup_db_url_and_path(adm4_code: str) -> str:
 
     # create folder for db if not exists
     DB_FOLDER = Path("database")
-    os.makedirs(DB_FOLDER, exist_ok=True)
+    DB_FOLDER.mkdir(exist_ok=True)
 
     # define db filename, which is based on the adm4_code
     DB_FILENAME = f"{DB_FOLDER}/{adm4_code}_weather_forecast.db"
