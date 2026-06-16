@@ -5,7 +5,7 @@ from pydantic import ValidationError
 from typing import Any
 from collections.abc import Callable, Awaitable, AsyncIterable
 from src.core.models.raw_model import RawForecast, RawLocation
-from src.core.exceptions import MaxRetryAttemptError
+from src.core.exceptions import MaxRetryAttemptError, InvalidAdm4CodeError
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +23,9 @@ class ExtractForecast:
     async def get_forecast(
         self, adm4_code: str
     ) -> tuple[RawLocation, AsyncIterable[RawForecast]]:
-        main_url = self.BASE_URL + adm4_code
         logger.info(f"Extractor: extracting weather forecast on {adm4_code}")
         response = await self._request_with_retry(
-            self._request, main_url, self.RETRY_MAX_ATTEMPT, self.RETRY_DELAY
+            self._request, adm4_code, self.RETRY_MAX_ATTEMPT, self.RETRY_DELAY
         )
         data = response.json()["data"][0]
         raw_location = RawLocation(**data["lokasi"])
@@ -65,8 +64,11 @@ class ExtractForecast:
         logger.error("Extractor: max attempt reached")
         raise MaxRetryAttemptError(max_attempt)
 
-    async def _request(self, url: str) -> httpx.Response:
-        response = await self.client.get(url, timeout=self.REQUEST_TIMEOUT)
+    async def _request(self, adm4_code: str) -> httpx.Response:
+        main_url = self.BASE_URL + adm4_code
+        response = await self.client.get(main_url, timeout=self.REQUEST_TIMEOUT)
+        if response.status_code == 404:
+            raise InvalidAdm4CodeError(adm4_code)
         response.raise_for_status()
         await asyncio.sleep(self.REQUEST_DELAY)
         return response
