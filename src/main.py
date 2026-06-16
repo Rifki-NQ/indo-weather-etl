@@ -38,6 +38,7 @@ def setup_logging() -> None:
     )
 
     # supress loggers from dependencies
+    logging.getLogger("asyncio").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
 
