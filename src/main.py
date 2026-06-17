@@ -17,7 +17,6 @@ def setup_logging() -> None:
     # create folder for logs if not exists
     LOGS_FOLDER = Path("logs")
     LOGS_FOLDER.mkdir(exist_ok=True)
-    
 
     # define log filename, which is the datetime when the app run
     LOG_FILENAME = Path(
