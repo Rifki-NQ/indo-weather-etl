@@ -104,5 +104,8 @@ class ExtractForecast:
         try:
             return RawForecast(**single_forecast_data)
         except ValidationError as e:
-            logger.warning(f"Extractor: skipping malformed forecast entry: {e}")
+            err = e.errors()
+            logger.warning(
+                f"Extractor: skipping malformed forecast entry: {err[0]['loc']} {err[0]['msg']}"
+            )
             return None
