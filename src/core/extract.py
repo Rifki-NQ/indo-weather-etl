@@ -88,7 +88,7 @@ class ExtractForecast:
         while giving the event loop control with: await asyncio.sleep(0)
         """
         if not any(forecast_data):
-            raise EmptyForecastDataError("Empty data from the API")
+            raise EmptyForecastDataError("Empty forecast data from the API")
         for inner_list in forecast_data:
             for item in inner_list:
                 converted_forecast = self._convert_single_forecast(item)
