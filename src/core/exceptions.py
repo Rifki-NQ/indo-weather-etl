@@ -32,10 +32,19 @@ class InvalidAdm4CodeError(ExtractorError):
         super().__init__(f"Error: invalid adm4_code ({adm4_code}), API returns 404")
 
 
+class EmptyForecastDataError(ExtractorError):
+    """Raised when the API return empty weather forecast data"""
+
+    def __init__(self, message: str) -> None:
+        self.message = message
+        super().__init__(f"Error: {message}")
+
+
 class DBNotInitializedError(LoaderError):
     """Raised when the setup_db() has not called"""
 
     def __init__(self, message: str) -> None:
+        self.message = message
         super().__init__(f"Error: {message}")
 
     pass
