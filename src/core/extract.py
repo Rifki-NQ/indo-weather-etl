@@ -40,13 +40,13 @@ class ExtractForecast:
     async def _request_with_retry(
         self,
         requester: Callable[[str], Awaitable[httpx.Response]],
-        url: str,
+        adm4_code: str,
         max_attempt: int,
         retry_delay: float,
     ) -> httpx.Response:
         for attempt in range(max_attempt):
             try:
-                return await requester(url)
+                return await requester(adm4_code)
             except httpx.HTTPStatusError as e:
                 logger.warning(
                     f"Extractor: http status error occured, code: {e.response.status_code}"
