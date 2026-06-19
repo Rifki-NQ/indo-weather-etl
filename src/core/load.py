@@ -34,12 +34,12 @@ class LoadForecast:
         metadata.create_all(engine)
         self._db = DBContext(engine, location_table, forecast_table)
 
-    async def load_transformed_forecast(self) -> None:
+    async def load_transformed_forecast(self, adm4_code: str) -> None:
         db = self._get_db()
         (
             forecast_location,
             weather_forecast,
-        ) = await self.transformer.get_transformed_forecast()
+        ) = await self.transformer.get_transformed_forecast(adm4_code)
         with db.engine.connect() as conn:
             self._insert_or_ignore_location(conn, db.location_table, forecast_location)
             async for single_forecast in weather_forecast:

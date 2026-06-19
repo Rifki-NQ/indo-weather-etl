@@ -66,10 +66,10 @@ async def run_app(adm4_code: str, db_url: str) -> None:
     logger.info("App started")
     async with AsyncClient() as client:
         extractor = ExtractForecast(client)
-        transformer = TransformForecast(extractor, adm4_code)
+        transformer = TransformForecast(extractor)
         loader = LoadForecast(transformer)
         loader.setup_db(db_url)
-        await loader.load_transformed_forecast()
+        await loader.load_transformed_forecast(adm4_code)
     logger.info("App finished successfully")
 
 

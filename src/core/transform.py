@@ -9,35 +9,34 @@ logger = logging.getLogger(__name__)
 
 
 class TransformForecast:
-    def __init__(self, extractor: ExtractProtocol, adm4_code: str) -> None:
+    def __init__(self, extractor: ExtractProtocol) -> None:
         self.extractor = extractor
-        self.adm4_code = adm4_code
 
     async def get_transformed_forecast(
-        self,
+        self, adm4_code: str
     ) -> tuple[LocationModel, AsyncIterable[ForecastModel]]:
-        raw_location, raw_forecast = await self.extractor.get_forecast(self.adm4_code)
+        raw_location, raw_forecast = await self.extractor.get_forecast(adm4_code)
         return self._transform_forecast_location(
             raw_location
-        ), self._transform_all_forecast(raw_forecast)
+        ), self._transform_all_forecast(raw_location.adm4, raw_forecast)
 
     async def _transform_all_forecast(
-        self, raw_forecast: AsyncIterable[RawForecast]
+        self, adm4_code: str, raw_forecast: AsyncIterable[RawForecast]
     ) -> AsyncIterable[ForecastModel]:
         async for single_raw_forecast in raw_forecast:
             logger.info(
                 f"Transforming: forecast date {single_raw_forecast.local_datetime}"
             )
-            yield self._transform_single_forecast(single_raw_forecast)
+            yield self._transform_single_forecast(adm4_code, single_raw_forecast)
             await asyncio.sleep(0)
 
     def _transform_single_forecast(
-        self, single_raw_forecast: RawForecast
+        self, adm4_code: str, single_raw_forecast: RawForecast
     ) -> ForecastModel:
         return ForecastModel(
             forecast_datetime=single_raw_forecast.local_datetime,
             analysis_datetime=single_raw_forecast.analysis_date,
-            adm4_code=self.adm4_code,
+            adm4_code=adm4_code,
             temperature=single_raw_forecast.t,
             total_cloud_coverage=single_raw_forecast.tcc,
             total_precipitation=single_raw_forecast.tp,

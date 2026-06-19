@@ -12,5 +12,5 @@ class ExtractProtocol(Protocol):
 
 class TransformProtocol(Protocol):
     async def get_transformed_forecast(
-        self,
+        self, adm4_code: str
     ) -> tuple[LocationModel, AsyncIterable[ForecastModel]]: ...
