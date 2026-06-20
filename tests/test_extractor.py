@@ -4,8 +4,9 @@ import logging
 from httpx import HTTPError
 from typing import Any
 from tests.mock_data.mock_forecast_data import (
-    MOCKED_BMKG_FORECAST_DATA,
-    MOCKED_BMKG_FORECAST_WITH_MALFORED_DATA,
+    MOCKED_FORECAST_DATA,
+    MOCKED_FORECAST_WITH_ONE_MALFORED_DATA,
+    MOCKED_FORECAST_WITH_ALL_MALFORED_DATA,
 )
 from src.core.extract import ExtractForecast
 from src.core.models.raw_model import RawForecast
@@ -13,6 +14,7 @@ from src.core.exceptions import (
     MaxRetryAttemptError,
     InvalidAdm4CodeError,
     EmptyForecastDataError,
+    AllForecastDataMalformedError,
 )
 
 # current max_attempt value = 5
@@ -35,7 +37,7 @@ async def test_retry_then_fail(extractor: ExtractForecast) -> None:
 
 async def test_retry_then_succeed(extractor: ExtractForecast) -> None:
     mock_response = MagicMock()
-    mock_response.json.return_value = MOCKED_BMKG_FORECAST_DATA
+    mock_response.json.return_value = MOCKED_FORECAST_DATA
     with (
         patch("asyncio.sleep"),
         patch.object(
@@ -65,7 +67,7 @@ async def test_convert_all_forecast_with_all_data_valid(
     extractor: ExtractForecast,
 ) -> None:
     all_data = extractor._convert_all_forecast(  # pyright: ignore[reportPrivateUsage]
-        MOCKED_BMKG_FORECAST_DATA["data"][0]["cuaca"], ""
+        MOCKED_FORECAST_DATA["data"][0]["cuaca"], ""
     )
     total_data = 0
     async for data in all_data:
@@ -80,7 +82,7 @@ async def test_convert_all_forecast_with_one_malformed_data(
 ) -> None:
     caplog.set_level(logging.WARNING)
     all_data = extractor._convert_all_forecast(  # pyright: ignore[reportPrivateUsage]
-        MOCKED_BMKG_FORECAST_WITH_MALFORED_DATA["data"][0]["cuaca"], ""
+        MOCKED_FORECAST_WITH_ONE_MALFORED_DATA["data"][0]["cuaca"], ""
     )
     total_data = 0
     async for data in all_data:
@@ -88,6 +90,18 @@ async def test_convert_all_forecast_with_one_malformed_data(
         total_data += 1
     assert total_data == 17
     assert "malformed forecast" in caplog.records[0].getMessage()
+
+
+async def test_convert_all_forecast_with_all_malformed_data(
+    extractor: ExtractForecast,
+) -> None:
+    all_data = extractor._convert_all_forecast(  # pyright: ignore[reportPrivateUsage]
+        MOCKED_FORECAST_WITH_ALL_MALFORED_DATA["data"][0]["cuaca"], ""
+    )
+    with pytest.raises(AllForecastDataMalformedError) as exc_info:
+        async for _ in all_data:
+            pass
+    assert exc_info.value.total_malformed == 18
 
 
 @pytest.mark.parametrize(
