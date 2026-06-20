@@ -9,6 +9,7 @@ from src.core.exceptions import (
     MaxRetryAttemptError,
     InvalidAdm4CodeError,
     EmptyForecastDataError,
+    AllForecastDataMalformedError,
 )
 
 logger = logging.getLogger(__name__)
@@ -89,16 +90,22 @@ class ExtractForecast:
         """
         if not any(forecast_data):
             raise EmptyForecastDataError("Empty forecast data from the API")
+        yielded_data = 0
+        total_malformed = 0
         for inner_list in forecast_data:
             for item in inner_list:
                 converted_forecast = self._convert_single_forecast(item)
                 if converted_forecast is None:
+                    total_malformed += 1
                     continue
                 logger.debug(
                     f"Extractor: forecast data for {converted_forecast.local_datetime} on {adm4_code} validated"
                 )
                 yield converted_forecast
+                yielded_data += 1
                 await asyncio.sleep(0)
+        if yielded_data == 0:
+            raise AllForecastDataMalformedError(total_malformed)
 
     def _convert_single_forecast(
         self, single_forecast_data: dict[str, Any]

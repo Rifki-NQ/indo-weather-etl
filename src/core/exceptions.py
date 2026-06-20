@@ -40,6 +40,16 @@ class EmptyForecastDataError(ExtractorError):
         super().__init__(f"Error: {message}")
 
 
+class AllForecastDataMalformedError(ExtractorError):
+    """Raised when all forecast data from the API is malformed"""
+
+    def __init__(self, total_malformed: int) -> None:
+        self.total_malformed = total_malformed
+        super().__init__(
+            f"Error: all forecast data from the API ({total_malformed} items) malformed"
+        )
+
+
 class DBNotInitializedError(LoaderError):
     """Raised when the setup_db() has not called"""
 
