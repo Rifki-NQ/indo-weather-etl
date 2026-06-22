@@ -22,7 +22,7 @@ class RawLocation(StrictModel):
 
 class RawForecast(StrictModel):
     datetime: AwareDatetime  # datetime (ISO 8601)
-    t: int  # temprature (celcius)
+    t: int  # temperature (celcius)
     tcc: int  # total cloud coverage (percent)
     tp: float  # total precipitation | total rain fall (mm)
     weather: int  # weather code (BMKG forecast code)

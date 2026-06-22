@@ -26,7 +26,7 @@ class ForecastModel:
     forecast_datetime: datetime  # datetime for the weather forecast
     analysis_datetime: datetime  # datetime for the forecast analysis
     adm4_code: str  # district level four code, the forecast location
-    temperature: int  # temprature in celcius
+    temperature: int  # temperature in celcius
     total_cloud_coverage: int  # percentage unit
     total_precipitation: float  # mm unit
     weather_description: str
