@@ -3,7 +3,7 @@ import asyncio
 import logging
 from pydantic import ValidationError
 from typing import Any
-from collections.abc import Callable, Awaitable, AsyncIterable
+from collections.abc import AsyncIterable
 from src.core.models.raw_model import RawForecast, RawLocation
 from src.core.exceptions import (
     MaxRetryAttemptError,
@@ -30,7 +30,7 @@ class ExtractForecast:
     ) -> tuple[RawLocation, AsyncIterable[RawForecast]]:
         logger.info(f"Extractor: extracting weather forecast on {adm4_code}")
         response = await self._request_with_retry(
-            self._request, adm4_code, self.RETRY_MAX_ATTEMPT, self.RETRY_DELAY
+            adm4_code, self.RETRY_MAX_ATTEMPT, self.RETRY_DELAY
         )
         data = response.json()["data"][0]
         raw_location = RawLocation(**data["lokasi"])
@@ -39,14 +39,13 @@ class ExtractForecast:
 
     async def _request_with_retry(
         self,
-        requester: Callable[[str], Awaitable[httpx.Response]],
         adm4_code: str,
         max_attempt: int,
         retry_delay: float,
     ) -> httpx.Response:
         for attempt in range(max_attempt):
             try:
-                return await requester(adm4_code)
+                return await self._request(adm4_code)
             except httpx.HTTPStatusError as e:
                 logger.warning(
                     f"Extractor: http status error occured, code: {e.response.status_code}"
