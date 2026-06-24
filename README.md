@@ -4,6 +4,55 @@ An ETL Pipeline designed to extract data from public weather forecast API provid
 
 ---
 
+## Installation
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/Rifki-NQ/indo-weather-etl.git
+
+# 2. Navigate into the project directory
+cd indo-weather-etl
+
+# 3. Create a virtual environment
+
+# Linux / macOS
+python3 -m venv .venv
+
+# Windows
+python -m venv .venv
+
+# 4. Activate the virtual environment
+
+# Linux / macOS
+source .venv/bin/activate
+
+# Windows
+.venv\Scripts\activate
+
+# 5. Install dependencies
+pip install -e .
+
+# (Optional) Install dev dependencies
+pip install -e ".[dev]"
+```
+
+---
+
+## Usage
+
+Run the pipeline with:
+
+```bash
+weather --adm4 <adm4_code>
+```
+
+> `adm4_code` is Indonesia's administrative area code down to the village level.
+> See the full reference: [Kode Wilayah Administrasi Pemerintahan seluruh Indonesia](https://m.nomor.net/_kodepos.php?_i=kode-wilayah).
+
+Output is written to `database/`, with logs in `logs/`.
+
+---
+
 ## Architecture Overview
 
 This project is split into three layers that form a linear pipeline:
@@ -54,5 +103,13 @@ forecast_location  # dimension table — contains location data for each forecas
 ```
 
 The load layer uses upsert logic: `INSERT OR IGNORE` for `forecast_location` and `INSERT OR REPLACE` for `weather_forecast`. The `INSERT OR IGNORE` strategy for `forecast_location` is intentional — location data from the API rarely changes, so silently skipping duplicates is the safe choice.
+
+---
+
+## Running Tests
+
+```bash
+pytest tests/
+```
 
 ---
