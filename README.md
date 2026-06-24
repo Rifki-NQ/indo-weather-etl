@@ -102,7 +102,7 @@ weather_forecast   # fact table — contains weather forecast data produced by t
 forecast_location  # dimension table — contains location data for each forecast
 ```
 
-The load layer uses upsert logic: `INSERT OR IGNORE` for `forecast_location` and `INSERT OR REPLACE` for `weather_forecast`. The `INSERT OR IGNORE` strategy for `forecast_location` is intentional — location data from the API rarely changes, so silently skipping duplicates is the safe choice.
+The load layer uses upsert logic: `INSERT OR IGNORE` for `forecast_location` and `INSERT OR UPDATE` for `weather_forecast`. The `INSERT OR IGNORE` strategy for `forecast_location` is intentional — location data from the API rarely changes, so silently skipping duplicates is the safe choice.
 
 ---
 

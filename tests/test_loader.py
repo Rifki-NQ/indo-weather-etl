@@ -136,7 +136,7 @@ async def test_load_with_existed_weather_forecast_data(
     loader: LoadForecast, loader_with_different_weather_forecast: LoadForecast
 ) -> None:
     """
-    weather_forecast should replace row with existing primary_key on the same db
+    weather_forecast should update row with existing primary_key on the same db
 
     loader_with_different_weather_forecast uses MockExtractForecastDataAB which
     shares the same composite PK as MockExtractForecast but has different

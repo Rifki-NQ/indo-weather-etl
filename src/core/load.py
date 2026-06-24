@@ -43,7 +43,7 @@ class LoadForecast:
         with db.engine.connect() as conn:
             self._insert_or_ignore_location(conn, db.location_table, forecast_location)
             async for single_forecast in weather_forecast:
-                self._insert_or_replace_forecast(
+                self._insert_or_update_forecast(
                     conn, db.forecast_table, single_forecast
                 )
             conn.commit()
@@ -61,6 +61,7 @@ class LoadForecast:
     def _insert_or_ignore_location(
         self, conn: Connection, location_table: Table, location_data: LocationModel
     ) -> None:
+        """Ignore the new row if there is a conflict"""
         stmt = insert(location_table).values(**location_data.as_dict())
         stmt = stmt.on_conflict_do_nothing()
         result = conn.execute(stmt)
@@ -73,15 +74,21 @@ class LoadForecast:
             f"Load(location_table): insert location: adm4_code {location_data.adm4_code}"
         )
 
-    def _insert_or_replace_forecast(
+    def _insert_or_update_forecast(
         self, conn: Connection, forecast_table: Table, forecast_data: ForecastModel
     ) -> None:
-        stmt = (
-            insert(forecast_table)
-            .prefix_with("OR REPLACE")
-            .values(**forecast_data.as_dict())
+        """Update existing row except the primary keys if there is a conflict"""
+        pk_names = {pk.name for pk in forecast_table.primary_key.columns}
+        stmt = insert(forecast_table).values(**forecast_data.as_dict())
+        upsert_stmt = stmt.on_conflict_do_update(
+            index_elements=list(pk_names),
+            set_={
+                col.name: stmt.excluded[col.name]
+                for col in forecast_table.c
+                if col.name not in pk_names
+            }
         )
-        conn.execute(stmt)
+        conn.execute(upsert_stmt)
         logger.info(
             f"Load(forecast_table): insert or replace forecast: {forecast_data.forecast_datetime} on {forecast_data.adm4_code}"
         )
