@@ -35,7 +35,6 @@ class ExtractForecast:
         data = response.json()["data"][0]
         raw_location = RawLocation(**data["lokasi"])
         raw_forecast = self._convert_all_forecast(data["cuaca"], adm4_code)
-        del data
         return raw_location, raw_forecast
 
     async def _request_with_retry(
