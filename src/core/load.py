@@ -66,7 +66,7 @@ class LoadForecast:
         stmt = stmt.on_conflict_do_nothing()
         result = conn.execute(stmt)
         if result.rowcount == 0:
-            logger.info(
+            logger.debug(
                 f"Load(location_table): ignore location: adm4_code {location_data.adm4_code}"
             )
             return
@@ -90,7 +90,7 @@ class LoadForecast:
         )
         conn.execute(upsert_stmt)
         logger.info(
-            f"Load(forecast_table): insert or replace forecast: {forecast_data.forecast_datetime} on {forecast_data.adm4_code}"
+            f"Load(forecast_table): insert or update forecast: {forecast_data.forecast_datetime} on {forecast_data.adm4_code}"
         )
 
     def _define_forecast_location_table(self, metadata: MetaData) -> Table:

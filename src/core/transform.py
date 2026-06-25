@@ -24,10 +24,10 @@ class TransformForecast:
         self, adm4_code: str, raw_forecast: AsyncIterable[RawForecast]
     ) -> AsyncIterable[ForecastModel]:
         async for single_raw_forecast in raw_forecast:
-            logger.info(
-                f"Transforming: forecast date {single_raw_forecast.local_datetime}"
-            )
             yield self._transform_single_forecast(adm4_code, single_raw_forecast)
+            logger.debug(
+                f"Transformer: forecast date {single_raw_forecast.local_datetime} on {adm4_code} transformed"
+            )
             await asyncio.sleep(0)
 
     def _transform_single_forecast(
