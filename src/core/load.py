@@ -86,7 +86,7 @@ class LoadForecast:
                 col.name: stmt.excluded[col.name]
                 for col in forecast_table.c
                 if col.name not in pk_names
-            }
+            },
         )
         conn.execute(upsert_stmt)
         logger.info(
