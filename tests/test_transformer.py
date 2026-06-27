@@ -1,9 +1,13 @@
 import pytest
+from unittest.mock import patch
 from datetime import datetime
-from collections.abc import AsyncIterable
+from collections.abc import AsyncIterable, AsyncGenerator
 from tests.mock_class.mock_extract import MockExtractForecast
 from src.core.transform import TransformForecast
 from src.core.models.domain_model import LocationModel, ForecastModel
+
+
+MOCK_CURRENT_DATETIME = datetime(2025, 12, 30, 12, 30, 30)
 
 
 @pytest.fixture
@@ -19,8 +23,10 @@ def transformer(extractor: MockExtractForecast) -> TransformForecast:
 @pytest.fixture
 async def transformed_forecast(
     transformer: TransformForecast,
-) -> tuple[LocationModel, AsyncIterable[ForecastModel]]:
-    return await transformer.get_transformed_forecast("")
+) -> AsyncGenerator[tuple[LocationModel, AsyncIterable[ForecastModel]], None]:
+    """Patch _current_datetime to deterministic hardcoded datetime"""
+    with patch.object(transformer, "_current_datetime", new=MOCK_CURRENT_DATETIME):
+        yield await transformer.get_transformed_forecast("")
 
 
 @pytest.fixture
@@ -90,4 +96,6 @@ async def test_transformed_weather_forecast_first_values(
         assert data.wind_speed == 4.7
         assert data.humidity == 91
         assert data.visibility == 7360
+        assert data.updated_at == MOCK_CURRENT_DATETIME
+        assert data.created_at == MOCK_CURRENT_DATETIME
         break
