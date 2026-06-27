@@ -1,22 +1,28 @@
 import pytest
+import logging
+from unittest.mock import patch
 from pathlib import Path
 from datetime import datetime
 from typing import Any
-from collections.abc import Sequence
+from collections.abc import Sequence, Generator
 from sqlalchemy import Row, select, inspect
 from tests.mock_class.mock_extract import (
     MockExtractForecast,
     MockExtractForecastDataBA,
     MockExtractForecastAB,
 )
-from src.core.models.protocols import ExtractProtocol
 from src.core.transform import TransformForecast
 from src.core.load import LoadForecast
 from src.core.exceptions import DBNotInitializedError
 
 
-def make_loader(tmp_path: Path, mocked_extractor: ExtractProtocol) -> LoadForecast:
-    transformer = TransformForecast(mocked_extractor)
+# make TransformForecast._current_datetime patched with hardcoded datetime value
+# because original implementation uses datetime.now()
+MOCK_FIRST_RUN_CURRENT_DATETIME = datetime(2025, 12, 30, 12, 30, 30)
+MOCK_SECOND_RUN_CURRENT_DATETIME = datetime(2025, 12, 30, 12, 30, 40)
+
+
+def make_loader(tmp_path: Path, transformer: TransformForecast) -> LoadForecast:
     loader = LoadForecast(transformer)
     temp_path = f"sqlite:///{tmp_path / 'temp_db.db'}"
     loader.setup_db(temp_path)
@@ -24,18 +30,34 @@ def make_loader(tmp_path: Path, mocked_extractor: ExtractProtocol) -> LoadForeca
 
 
 @pytest.fixture
-def loader(tmp_path: Path) -> LoadForecast:
-    return make_loader(tmp_path, MockExtractForecast())
+def loader(tmp_path: Path) -> Generator[LoadForecast, None, None]:
+    transformer = TransformForecast(MockExtractForecast())
+    with patch.object(
+        transformer, "_current_datetime", new=MOCK_FIRST_RUN_CURRENT_DATETIME
+    ):
+        yield make_loader(tmp_path, transformer)
 
 
 @pytest.fixture
-def loader_with_different_forecast_location(tmp_path: Path) -> LoadForecast:
-    return make_loader(tmp_path, MockExtractForecastDataBA())
+def loader_with_different_forecast_location(
+    tmp_path: Path,
+) -> Generator[LoadForecast, None, None]:
+    transformer = TransformForecast(MockExtractForecastDataBA())
+    with patch.object(
+        transformer, "_current_datetime", new=MOCK_FIRST_RUN_CURRENT_DATETIME
+    ):
+        yield make_loader(tmp_path, transformer)
 
 
 @pytest.fixture
-def loader_with_different_weather_forecast(tmp_path: Path) -> LoadForecast:
-    return make_loader(tmp_path, MockExtractForecastAB())
+def loader_with_different_weather_forecast(
+    tmp_path: Path,
+) -> Generator[LoadForecast, None, None]:
+    transformer = TransformForecast(MockExtractForecastAB())
+    with patch.object(
+        transformer, "_current_datetime", new=MOCK_SECOND_RUN_CURRENT_DATETIME
+    ):
+        yield make_loader(tmp_path, transformer)
 
 
 def read_location_table_rows(loader_obj: LoadForecast) -> Sequence[Row[Any]]:
@@ -52,7 +74,7 @@ def read_forecast_table_rows(loader_obj: LoadForecast) -> Sequence[Row[Any]]:
         return conn.execute(stmt).fetchall()
 
 
-async def test_load_tranformed_forecast_without_setup_db_first() -> None:
+async def test_load_transformed_forecast_without_setup_db_first() -> None:
     transformer = TransformForecast(MockExtractForecast())
     loader = LoadForecast(transformer)
     with pytest.raises(DBNotInitializedError):
@@ -108,6 +130,8 @@ async def test_forecast_table_first_values(loader: LoadForecast) -> None:
     assert first_row.wind_speed == 4.7
     assert first_row.humidity == 91
     assert first_row.visibility == 7360
+    assert first_row.updated_at == MOCK_FIRST_RUN_CURRENT_DATETIME
+    assert first_row.created_at == MOCK_FIRST_RUN_CURRENT_DATETIME
 
 
 async def test_load_with_existed_forecast_location_data(
@@ -133,20 +157,29 @@ async def test_load_with_existed_forecast_location_data(
 
 
 async def test_load_with_existed_weather_forecast_data(
-    loader: LoadForecast, loader_with_different_weather_forecast: LoadForecast
+    caplog: pytest.LogCaptureFixture,
+    loader: LoadForecast,
+    loader_with_different_weather_forecast: LoadForecast,
 ) -> None:
     """
-    weather_forecast should update row with existing primary_key on the same db
+    Weather_forecast should update row with existing primary_key on the same db.
+    *except the PKs themselves and the 'created_at' column.
 
     loader_with_different_weather_forecast uses MockExtractForecastDataAB which
     shares the same composite PK as MockExtractForecast but has different
     'weather_desc' and 'weather_desc_en' mocked data.
+
+    Logger should logs first run as insert, and second run as update.
     """
+    caplog.set_level(logging.INFO)
 
     await loader.load_transformed_forecast("")
     first_run_first_row = read_forecast_table_rows(loader)[0]
     assert first_run_first_row.weather_description == "Berawan"
     assert first_run_first_row.weather_description_eng == "Mostly Cloudy"
+    assert "insert forecast" in caplog.records[1].getMessage()
+
+    caplog.clear()
 
     await loader_with_different_weather_forecast.load_transformed_forecast("")
     second_run_first_row = read_forecast_table_rows(
@@ -154,5 +187,25 @@ async def test_load_with_existed_weather_forecast_data(
     )[0]
     assert second_run_first_row.weather_description == "Berawan b version"
     assert second_run_first_row.weather_description_eng == "Mostly Cloudy b version"
+    assert "update forecast" in caplog.records[1].getMessage()
 
     assert first_run_first_row != second_run_first_row
+
+
+async def test_created_at_field_on_existed_weather_forecast_data(
+    loader: LoadForecast,
+    loader_with_different_weather_forecast: LoadForecast,
+) -> None:
+    """
+    Created_at column should only change if the row has not existed yet in the db.
+    which means it was inserted, not updated.
+    """
+    await loader.load_transformed_forecast("")
+    first_run_first_row = read_forecast_table_rows(loader)[0]
+    assert first_run_first_row.created_at == MOCK_FIRST_RUN_CURRENT_DATETIME
+
+    await loader_with_different_weather_forecast.load_transformed_forecast("")
+    second_run_first_row = read_forecast_table_rows(
+        loader_with_different_weather_forecast
+    )[0]
+    assert second_run_first_row.created_at == MOCK_FIRST_RUN_CURRENT_DATETIME
