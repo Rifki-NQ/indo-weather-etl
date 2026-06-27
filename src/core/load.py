@@ -79,18 +79,25 @@ class LoadForecast:
     ) -> None:
         """Update existing row except the primary keys if there is a conflict"""
         pk_names = {pk.name for pk in forecast_table.primary_key.columns}
+        excluded_columns = {"created_at", *pk_names}
+
         stmt = insert(forecast_table).values(**forecast_data.as_dict())
         upsert_stmt = stmt.on_conflict_do_update(
             index_elements=list(pk_names),
             set_={
                 col.name: stmt.excluded[col.name]
                 for col in forecast_table.c
-                if col.name not in pk_names
+                if col.name not in excluded_columns
             },
-        )
-        conn.execute(upsert_stmt)
+        ).returning(forecast_table.c.created_at)
+        row = conn.execute(upsert_stmt).fetchone()
+        if row and row.created_at == forecast_data.created_at:
+            logger.info(
+                f"Load(forecast_table): insert forecast: {forecast_data.forecast_datetime} on {forecast_data.adm4_code}"
+            )
+            return
         logger.info(
-            f"Load(forecast_table): insert or update forecast: {forecast_data.forecast_datetime} on {forecast_data.adm4_code}"
+            f"Load(forecast_table): update forecast: {forecast_data.forecast_datetime} on {forecast_data.adm4_code}"
         )
 
     def _define_forecast_location_table(self, metadata: MetaData) -> Table:
@@ -134,4 +141,6 @@ class LoadForecast:
             Column("wind_speed", Float()),
             Column("humidity", Integer()),
             Column("visibility", Integer()),
+            Column("updated_at", DateTime()),
+            Column("created_at", DateTime()),
         )
