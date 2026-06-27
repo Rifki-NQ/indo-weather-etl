@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from datetime import datetime
 from collections.abc import AsyncIterable
 from src.core.models.raw_model import RawLocation, RawForecast
 from src.core.models.domain_model import LocationModel, ForecastModel
@@ -11,6 +12,7 @@ logger = logging.getLogger(__name__)
 class TransformForecast:
     def __init__(self, extractor: ExtractProtocol) -> None:
         self.extractor = extractor
+        self._current_datetime = datetime.now().replace(microsecond=0)
 
     async def get_transformed_forecast(
         self, adm4_code: str
@@ -48,6 +50,8 @@ class TransformForecast:
             wind_speed=single_raw_forecast.ws,
             humidity=single_raw_forecast.hu,
             visibility=single_raw_forecast.vs,
+            updated_at=self._current_datetime,
+            created_at=self._current_datetime,
         )
 
     def _transform_forecast_location(self, raw_location: RawLocation) -> LocationModel:

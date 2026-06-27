@@ -37,6 +37,8 @@ class ForecastModel:
     wind_speed: float  # km/h unit
     humidity: int  # percentage
     visibility: int  # meters unit
+    updated_at: datetime  # datetime for the forecast last update
+    created_at: datetime  # datetime for the forecast creation
 
     def as_dict(self) -> dict[str, str | int | float | datetime]:
         return asdict(self)
