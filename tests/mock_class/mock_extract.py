@@ -21,7 +21,7 @@ class MockExtractForecast:
             await asyncio.sleep(0)
 
 
-class MockExtractForecastDataBA:
+class MockExtractForecastBA:
     async def get_forecast(
         self, adm4_code: str
     ) -> tuple[RawLocation, AsyncIterable[RawForecast]]:

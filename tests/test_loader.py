@@ -8,7 +8,7 @@ from collections.abc import Sequence, Generator
 from sqlalchemy import Row, select, inspect
 from tests.mock_class.mock_extract import (
     MockExtractForecast,
-    MockExtractForecastDataBA,
+    MockExtractForecastBA,
     MockExtractForecastAB,
 )
 from src.core.transform import TransformForecast
@@ -42,7 +42,7 @@ def loader(tmp_path: Path) -> Generator[LoadForecast, None, None]:
 def loader_with_different_forecast_location(
     tmp_path: Path,
 ) -> Generator[LoadForecast, None, None]:
-    transformer = TransformForecast(MockExtractForecastDataBA())
+    transformer = TransformForecast(MockExtractForecastBA())
     with patch.object(
         transformer, "_current_datetime", new=MOCK_FIRST_RUN_CURRENT_DATETIME
     ):
@@ -140,7 +140,7 @@ async def test_load_with_existed_forecast_location_data(
     """
     location_table should ignore row with existing primary_key on the same db.
 
-    loader_with_different_forecast_location uses MockExtractForecastDataBA which
+    loader_with_different_forecast_location uses MockExtractForecastBA which
     shares the same location PK as MockExtractForecast but has different
     mocked 'provinsi' data.
     """
