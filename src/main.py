@@ -1,9 +1,9 @@
 import sys
 import asyncio
-import logging
 import argparse
+import logging
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from datetime import datetime
 from httpx import AsyncClient
 from src.core.extract import ExtractForecast
 from src.core.transform import TransformForecast
@@ -18,11 +18,6 @@ def setup_logging() -> None:
     LOGS_FOLDER = Path("logs")
     LOGS_FOLDER.mkdir(exist_ok=True)
 
-    # define log filename, which is the datetime when the app run
-    LOG_FILENAME = Path(
-        f"{LOGS_FOLDER}/{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.log"
-    )
-
     # define loggers level
     LOGS_LEVEL = logging.DEBUG
 
@@ -31,8 +26,13 @@ def setup_logging() -> None:
         format="%(asctime)s | %(levelname)-8s | %(name)-40s | %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
         handlers=[
-            logging.FileHandler(LOG_FILENAME, "w"),
             logging.StreamHandler(),
+            RotatingFileHandler(
+                filename=Path(LOGS_FOLDER / "weather_etl.log"),
+                maxBytes=10_000_000,
+                backupCount=5,
+                encoding="utf-8",
+            ),
         ],
     )
 
