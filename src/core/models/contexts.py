@@ -1,9 +1,10 @@
 from dataclasses import dataclass
-from sqlalchemy import Engine, Table
+from sqlalchemy import Table
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 
 @dataclass
 class DBContext:
-    engine: Engine
+    engine: AsyncEngine
     location_table: Table
     forecast_table: Table

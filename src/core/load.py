@@ -1,8 +1,6 @@
 import logging
 from sqlalchemy import (
-    create_engine,
     MetaData,
-    Connection,
     Table,
     Column,
     Integer,
@@ -11,7 +9,8 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
 )
-from sqlalchemy.dialects.sqlite import insert
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncConnection
 from src.core.models.contexts import DBContext
 from src.core.models.domain_model import LocationModel, ForecastModel
 from src.core.models.protocols import TransformProtocol
@@ -25,14 +24,15 @@ class LoadForecast:
         self.transformer = transformer
         self._db: DBContext | None = None
 
-    def setup_db(self, db_url: str) -> None:
+    async def setup_db(self, db_url: str) -> None:
         """Must be called before load_transformed_forecast()."""
-        engine = create_engine(db_url)
+        engine = create_async_engine(url=db_url, pool_pre_ping=True)
         metadata = MetaData()
         location_table = self._define_forecast_location_table(metadata)
         forecast_table = self._define_forecast_table(metadata)
-        metadata.create_all(engine)
-        self._db = DBContext(engine, location_table, forecast_table)
+        async with engine.begin() as conn:
+            await conn.run_sync(metadata.create_all)
+            self._db = DBContext(engine, location_table, forecast_table)
 
     async def load_transformed_forecast(self, adm4_code: str) -> None:
         db = self._get_db()
@@ -40,13 +40,14 @@ class LoadForecast:
             forecast_location,
             weather_forecast,
         ) = await self.transformer.get_transformed_forecast(adm4_code)
-        with db.engine.connect() as conn:
-            self._insert_or_ignore_location(conn, db.location_table, forecast_location)
+        async with db.engine.begin() as conn:
+            await self._insert_or_ignore_location(
+                conn, db.location_table, forecast_location
+            )
             async for single_forecast in weather_forecast:
-                self._insert_or_update_forecast(
+                await self._insert_or_update_forecast(
                     conn, db.forecast_table, single_forecast
                 )
-            conn.commit()
             logger.info(f"Load: forecast for {forecast_location.adm4_code} commited")
 
     def _get_db(self) -> DBContext:
@@ -58,13 +59,13 @@ class LoadForecast:
             raise DBNotInitializedError("setup_db() has not called yet")
         return self._db
 
-    def _insert_or_ignore_location(
-        self, conn: Connection, location_table: Table, location_data: LocationModel
+    async def _insert_or_ignore_location(
+        self, conn: AsyncConnection, location_table: Table, location_data: LocationModel
     ) -> None:
         """Ignore the new row if there is a conflict"""
         stmt = insert(location_table).values(**location_data.as_dict())
         stmt = stmt.on_conflict_do_nothing()
-        result = conn.execute(stmt)
+        result = await conn.execute(stmt)
         if result.rowcount == 0:
             logger.debug(
                 f"Load(location_table): ignore location: adm4_code {location_data.adm4_code}"
@@ -74,8 +75,8 @@ class LoadForecast:
             f"Load(location_table): insert location: adm4_code {location_data.adm4_code}"
         )
 
-    def _insert_or_update_forecast(
-        self, conn: Connection, forecast_table: Table, forecast_data: ForecastModel
+    async def _insert_or_update_forecast(
+        self, conn: AsyncConnection, forecast_table: Table, forecast_data: ForecastModel
     ) -> None:
         """Update existing row except the primary keys if there is a conflict"""
         pk_names = {pk.name for pk in forecast_table.primary_key.columns}
@@ -90,7 +91,8 @@ class LoadForecast:
                 if col.name not in excluded_columns
             },
         ).returning(forecast_table.c.created_at)
-        row = conn.execute(upsert_stmt).fetchone()
+        result = await conn.execute(upsert_stmt)
+        row = result.fetchone()
         if row and row.created_at == forecast_data.created_at:
             logger.info(
                 f"Load(forecast_table): insert forecast: {forecast_data.forecast_datetime} on {forecast_data.adm4_code}"

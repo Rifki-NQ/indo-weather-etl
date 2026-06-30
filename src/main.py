@@ -1,3 +1,4 @@
+import os
 import sys
 import asyncio
 import argparse
@@ -5,6 +6,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from httpx import AsyncClient
+from dotenv import load_dotenv
 from src.core.extract import ExtractForecast
 from src.core.transform import TransformForecast
 from src.core.load import LoadForecast
@@ -48,18 +50,11 @@ def setup_argparse() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def setup_db_url_and_path(adm4_code: str) -> str:
-    # define database url, which is sqlite currently
-    DB_URL = "sqlite:///"
-
-    # create folder for db if not exists
-    DB_FOLDER = Path("database")
-    DB_FOLDER.mkdir(exist_ok=True)
-
-    # define db filename, which is based on the adm4_code
-    DB_FILENAME = f"{DB_FOLDER}/{adm4_code}_weather_forecast.db"
-
-    return DB_URL + DB_FILENAME
+def get_env(key: str) -> str:
+    value = os.getenv(key)
+    if not value:
+        raise RuntimeError(f"Missing required environment variable: {key}")
+    return value
 
 
 async def run_app(adm4_code: str, db_url: str) -> None:
@@ -68,16 +63,17 @@ async def run_app(adm4_code: str, db_url: str) -> None:
         extractor = ExtractForecast(client)
         transformer = TransformForecast(extractor)
         loader = LoadForecast(transformer)
-        loader.setup_db(db_url)
+        await loader.setup_db(db_url)
         await loader.load_transformed_forecast(adm4_code)
     logger.info("App finished successfully")
 
 
 # package bootstrap
 def main() -> None:
+    load_dotenv()
     setup_logging()
     args = setup_argparse()
-    db_url = setup_db_url_and_path(args.adm4)
+    db_url = get_env("DATABASE_URL")
     try:
         asyncio.run(run_app(args.adm4, db_url))
     except DomainError as e:
