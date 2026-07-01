@@ -78,7 +78,7 @@ class LoadForecast:
     async def _insert_or_update_forecast(
         self, conn: AsyncConnection, forecast_table: Table, forecast_data: ForecastModel
     ) -> None:
-        """Update existing row except the primary keys if there is a conflict"""
+        """Update existing row except the excluded_columns if there is a conflict"""
         pk_names = {pk.name for pk in forecast_table.primary_key.columns}
         excluded_columns = {"created_at", *pk_names}
 
