@@ -1,77 +1,110 @@
 import pytest
+import pytest_asyncio
 import logging
+from dotenv import load_dotenv
 from unittest.mock import patch
-from pathlib import Path
 from datetime import datetime
 from typing import Any
-from collections.abc import Sequence, Generator
-from sqlalchemy import Row, select, inspect
+from collections.abc import Sequence, AsyncGenerator
+from sqlalchemy import Connection, Row, MetaData, select, inspect
+from sqlalchemy.ext.asyncio import AsyncConnection
 from tests.mock_class.mock_extract import (
     MockExtractForecast,
     MockExtractForecastBA,
     MockExtractForecastAB,
 )
+from src.main import get_env
 from src.core.transform import TransformForecast
 from src.core.load import LoadForecast
 from src.core.exceptions import DBNotInitializedError
 
+
+pytestmark = pytest.mark.integration
 
 # make TransformForecast._current_datetime patched with hardcoded datetime value
 # because original implementation uses datetime.now()
 MOCK_FIRST_RUN_CURRENT_DATETIME = datetime(2025, 12, 30, 12, 30, 30)
 MOCK_SECOND_RUN_CURRENT_DATETIME = datetime(2025, 12, 30, 12, 30, 40)
 
+load_dotenv()
+test_db_url = get_env("TEST_DATABASE_URL")
 
-def make_loader(tmp_path: Path, transformer: TransformForecast) -> LoadForecast:
+
+async def make_loader(
+    transformer: TransformForecast,
+) -> LoadForecast:
+
     loader = LoadForecast(transformer)
-    temp_path = f"sqlite:///{tmp_path / 'temp_db.db'}"
-    loader.setup_db(temp_path)
+    await loader.setup_db(test_db_url)
     return loader
 
 
-@pytest.fixture
-def loader(tmp_path: Path) -> Generator[LoadForecast, None, None]:
+async def drop_all_tables(conn: AsyncConnection) -> None:
+    metadata = MetaData()
+    await conn.run_sync(metadata.reflect)
+    await conn.run_sync(metadata.drop_all)
+
+
+@pytest_asyncio.fixture
+async def loader() -> AsyncGenerator[LoadForecast, None]:
     transformer = TransformForecast(MockExtractForecast())
     with patch.object(
         transformer, "_current_datetime", new=MOCK_FIRST_RUN_CURRENT_DATETIME
     ):
-        yield make_loader(tmp_path, transformer)
+        loader = await make_loader(transformer)
+        yield loader
+        db = loader._get_db()  # pyright: ignore[reportPrivateUsage]
+        async with db.engine.begin() as conn:
+            await drop_all_tables(conn)
+        await db.engine.dispose()
 
 
-@pytest.fixture
-def loader_with_different_forecast_location(
-    tmp_path: Path,
-) -> Generator[LoadForecast, None, None]:
+@pytest_asyncio.fixture
+async def loader_with_different_forecast_location() -> AsyncGenerator[
+    LoadForecast, None
+]:
     transformer = TransformForecast(MockExtractForecastBA())
     with patch.object(
         transformer, "_current_datetime", new=MOCK_FIRST_RUN_CURRENT_DATETIME
     ):
-        yield make_loader(tmp_path, transformer)
+        loader = await make_loader(transformer)
+        yield loader
+        db = loader._get_db()  # pyright: ignore[reportPrivateUsage]
+        async with db.engine.begin() as conn:
+            await drop_all_tables(conn)
+        await db.engine.dispose()
 
 
-@pytest.fixture
-def loader_with_different_weather_forecast(
-    tmp_path: Path,
-) -> Generator[LoadForecast, None, None]:
+@pytest_asyncio.fixture
+async def loader_with_different_weather_forecast() -> AsyncGenerator[
+    LoadForecast, None
+]:
     transformer = TransformForecast(MockExtractForecastAB())
     with patch.object(
         transformer, "_current_datetime", new=MOCK_SECOND_RUN_CURRENT_DATETIME
     ):
-        yield make_loader(tmp_path, transformer)
+        loader = await make_loader(transformer)
+        yield loader
+        db = loader._get_db()  # pyright: ignore[reportPrivateUsage]
+        async with db.engine.begin() as conn:
+            await drop_all_tables(conn)
+        await db.engine.dispose()
 
 
-def read_location_table_rows(loader_obj: LoadForecast) -> Sequence[Row[Any]]:
+async def read_location_table_rows(loader_obj: LoadForecast) -> Sequence[Row[Any]]:
     db = loader_obj._get_db()  # pyright: ignore[reportPrivateUsage]
     stmt = select(db.location_table)
-    with db.engine.connect() as conn:
-        return conn.execute(stmt).fetchall()
+    async with db.engine.begin() as conn:
+        result = await conn.execute(stmt)
+        return result.fetchall()
 
 
-def read_forecast_table_rows(loader_obj: LoadForecast) -> Sequence[Row[Any]]:
+async def read_forecast_table_rows(loader_obj: LoadForecast) -> Sequence[Row[Any]]:
     db = loader_obj._get_db()  # pyright: ignore[reportPrivateUsage]
-    stmt = select(db.forecast_table)
-    with db.engine.connect() as conn:
-        return conn.execute(stmt).fetchall()
+    stmt = select(db.forecast_table).order_by(db.forecast_table.c.forecast_datetime)
+    async with db.engine.begin() as conn:
+        result = await conn.execute(stmt)
+        return result.fetchall()
 
 
 async def test_load_transformed_forecast_without_setup_db_first() -> None:
@@ -81,25 +114,31 @@ async def test_load_transformed_forecast_without_setup_db_first() -> None:
         await loader.load_transformed_forecast("")
 
 
-def test_tables_exists(loader: LoadForecast) -> None:
+async def test_tables_exists(loader: LoadForecast) -> None:
     db = loader._get_db()  # pyright: ignore[reportPrivateUsage]
-    inspector = inspect(db.engine)
-    tables_name = inspector.get_table_names()
-    assert db.location_table.name in tables_name
-    assert db.forecast_table.name in tables_name
+    async with db.engine.begin() as conn:
+
+        def _inspect(sync_conn: Connection) -> list[str]:
+            inspector = inspect(sync_conn)
+            return inspector.get_table_names()
+
+        tables_name = await conn.run_sync(_inspect)
+        assert db.location_table.name in tables_name
+        assert db.forecast_table.name in tables_name
 
 
 async def test_tables_row_length(loader: LoadForecast) -> None:
     await loader.load_transformed_forecast("")
-    location_table_rows = read_location_table_rows(loader)
-    forecast_table_rows = read_forecast_table_rows(loader)
+    location_table_rows = await read_location_table_rows(loader)
+    forecast_table_rows = await read_forecast_table_rows(loader)
     assert len(location_table_rows) == 1
     assert len(forecast_table_rows) == 8
 
 
 async def test_location_table_first_values(loader: LoadForecast) -> None:
     await loader.load_transformed_forecast("")
-    first_row = read_location_table_rows(loader)[0]
+    rows = await read_location_table_rows(loader)
+    first_row = rows[0]
     assert first_row.adm4_code == "32.16.20.2003"
     assert first_row.adm1 == 32
     assert first_row.adm2 == 16
@@ -116,7 +155,8 @@ async def test_location_table_first_values(loader: LoadForecast) -> None:
 
 async def test_forecast_table_first_values(loader: LoadForecast) -> None:
     await loader.load_transformed_forecast("")
-    first_row = read_forecast_table_rows(loader)[0]
+    rows = await read_forecast_table_rows(loader)
+    first_row = rows[0]
     assert first_row.forecast_datetime == datetime(2026, 6, 17, 2, 0, 0)
     assert first_row.analysis_datetime == datetime(2026, 6, 16, 12, 0, 0)
     assert first_row.temperature == 25
@@ -146,14 +186,16 @@ async def test_load_with_existed_forecast_location_data(
     """
 
     await loader.load_transformed_forecast("")
-    first_run_row = read_location_table_rows(loader)[0]
+    first_run_rows = await read_location_table_rows(loader)
+    first_run_first_row = first_run_rows[0]
 
     await loader_with_different_forecast_location.load_transformed_forecast("")
-    second_run_row = read_location_table_rows(loader_with_different_forecast_location)[
-        0
-    ]
+    second_run_rows = await read_location_table_rows(
+        loader_with_different_forecast_location
+    )
+    second_run_first_row = second_run_rows[0]
 
-    assert first_run_row == second_run_row
+    assert first_run_first_row == second_run_first_row
 
 
 async def test_load_with_existed_weather_forecast_data(
@@ -174,7 +216,8 @@ async def test_load_with_existed_weather_forecast_data(
     caplog.set_level(logging.INFO)
 
     await loader.load_transformed_forecast("")
-    first_run_first_row = read_forecast_table_rows(loader)[0]
+    first_run_rows = await read_forecast_table_rows(loader)
+    first_run_first_row = first_run_rows[0]
     assert first_run_first_row.weather_description == "Berawan"
     assert first_run_first_row.weather_description_eng == "Mostly Cloudy"
     assert "insert forecast" in caplog.records[1].getMessage()
@@ -182,9 +225,10 @@ async def test_load_with_existed_weather_forecast_data(
     caplog.clear()
 
     await loader_with_different_weather_forecast.load_transformed_forecast("")
-    second_run_first_row = read_forecast_table_rows(
+    second_run_rows = await read_forecast_table_rows(
         loader_with_different_weather_forecast
-    )[0]
+    )
+    second_run_first_row = second_run_rows[0]
     assert second_run_first_row.weather_description == "Berawan b version"
     assert second_run_first_row.weather_description_eng == "Mostly Cloudy b version"
     assert "update forecast" in caplog.records[1].getMessage()
@@ -201,11 +245,13 @@ async def test_created_at_field_on_existed_weather_forecast_data(
     which means it was inserted, not updated.
     """
     await loader.load_transformed_forecast("")
-    first_run_first_row = read_forecast_table_rows(loader)[0]
+    first_run_rows = await read_forecast_table_rows(loader)
+    first_run_first_row = first_run_rows[0]
     assert first_run_first_row.created_at == MOCK_FIRST_RUN_CURRENT_DATETIME
 
     await loader_with_different_weather_forecast.load_transformed_forecast("")
-    second_run_first_row = read_forecast_table_rows(
+    second_run_rows = await read_forecast_table_rows(
         loader_with_different_weather_forecast
-    )[0]
+    )
+    second_run_first_row = second_run_rows[0]
     assert second_run_first_row.created_at == MOCK_FIRST_RUN_CURRENT_DATETIME
