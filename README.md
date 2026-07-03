@@ -1,6 +1,6 @@
 # indo-weather-etl
 
-An ETL Pipeline designed to extract data from public weather forecast API provided by [BMKG](https://data.bmkg.go.id/prakiraan-cuaca/), tranform the extracted data then load it into local storage using sqlite3
+An ETL Pipeline designed to extract data from public weather forecast API provided by [BMKG](https://data.bmkg.go.id/prakiraan-cuaca/), tranform the extracted data then load it into Postgresql
 
 ---
 
@@ -93,7 +93,7 @@ The transformation happens lazily — results are yielded as an `AsyncIterable`,
 
 The load layer lives in [`src/core/load.py`](src/core/load.py).
 
-This layer receives an `AsyncIterable` from the **transform** layer and iterates over it, loading each record into the database. It uses `sqlite3` for local disk storage and [`SQLAlchemy Core`](https://docs.sqlalchemy.org/en/20/core/) to interact with SQLite through Python objects rather than raw SQL strings.
+This layer receives an `AsyncIterable` from the **transform** layer and iterates over it, loading each record into the database. It uses `Postgresql` through [Neon serverless postgres](https://neon.com/docs/introduction/serverless) as the cloud storage and [`SQLAlchemy Core`](https://docs.sqlalchemy.org/en/20/core/) to interact with `Postgresql` through Python objects rather than raw SQL strings.
 
 Data is modeled using a star schema, producing two tables:
 
