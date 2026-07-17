@@ -1,3 +1,6 @@
+from pathlib import Path
+
+
 class DomainError(Exception):
     """Base exception for all business / logic errors"""
 
@@ -14,6 +17,10 @@ class LoaderError(DomainError):
     """Base exception for loader error"""
 
     pass
+
+
+class FileHandlingError(DomainError):
+    """Base exception for all file handling error"""
 
 
 class MaxRetryAttemptError(ExtractorError):
@@ -58,3 +65,35 @@ class DBNotInitializedError(LoaderError):
         super().__init__(f"Error: {message}")
 
     pass
+
+
+class NotFileError(FileHandlingError):
+    """Raised when the given filepath is not a file"""
+
+    def __init__(self, filepath: Path) -> None:
+        self.filepath = filepath
+        super().__init__(f"Error: {filepath} is not a file")
+
+
+class EmptyFileError(FileHandlingError):
+    """Raised when the file is empty"""
+
+    def __init__(self, filepath: Path) -> None:
+        self.filepath = filepath
+        super().__init__(f"Error: {filepath} is empty")
+
+
+class NotCSVFileError(FileHandlingError):
+    """Raised when the given filepath is not a csv file"""
+
+    def __init__(self, filepath: str) -> None:
+        self.filepath = filepath
+        super().__init__(f"Error: {filepath} is not a csv file")
+
+
+class InvalidColumnName(FileHandlingError):
+    """Raised when given column_name does not exist in the csv file"""
+
+    def __init__(self, column_name: str) -> None:
+        self.column_name = column_name
+        super().__init__(f"Error: column {column_name} does not exist")
