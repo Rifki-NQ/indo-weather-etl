@@ -1,7 +1,6 @@
 import os
 import sys
 import asyncio
-import argparse
 import logging
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -10,6 +9,8 @@ from dotenv import load_dotenv
 from src.core.extract import ExtractForecast
 from src.core.transform import TransformForecast
 from src.core.load import LoadForecast
+from src.core.runner import ETLRunner
+from src.core.utils import yield_csv_value
 from src.core.exceptions import DomainError
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ def setup_logging() -> None:
     LOGS_FOLDER.mkdir(exist_ok=True)
 
     # define loggers level
-    LOGS_LEVEL = logging.DEBUG
+    LOGS_LEVEL = logging.INFO
 
     logging.basicConfig(
         level=LOGS_LEVEL,
@@ -43,13 +44,6 @@ def setup_logging() -> None:
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
 
-
-def setup_argparse() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(prog="weather")
-    parser.add_argument("--adm4", type=str, required=True)
-    return parser.parse_args()
-
-
 def get_env(key: str) -> str:
     value = os.getenv(key)
     if not value:
@@ -57,14 +51,15 @@ def get_env(key: str) -> str:
     return value
 
 
-async def run_app(adm4_code: str, db_url: str) -> None:
+async def run_app(adm4_codes_path: str, db_url: str) -> None:
     logger.info("App started")
     async with AsyncClient() as client:
         extractor = ExtractForecast(client)
         transformer = TransformForecast(extractor)
         loader = LoadForecast(transformer)
         await loader.setup_db(db_url)
-        await loader.load_transformed_forecast(adm4_code)
+        runner = ETLRunner(loader)
+        await runner.run_batch(yield_csv_value(Path(adm4_codes_path), "Kode"))
     logger.info("App finished successfully")
 
 
@@ -72,10 +67,10 @@ async def run_app(adm4_code: str, db_url: str) -> None:
 def main() -> None:
     load_dotenv()
     setup_logging()
-    args = setup_argparse()
     db_url = get_env("DATABASE_URL")
+    adm4_codes_path = get_env("ADM4_CODES_PATH")
     try:
-        asyncio.run(run_app(args.adm4, db_url))
+        asyncio.run(run_app(adm4_codes_path, db_url))
     except DomainError as e:
         logger.critical(e)
         logger.info("App finished with error")

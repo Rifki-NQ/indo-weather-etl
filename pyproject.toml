@@ -23,7 +23,7 @@ dev = [
 ]
 
 [project.scripts]
-weather = "src.main:main"
+run_etl = "src.main:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
