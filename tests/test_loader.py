@@ -213,7 +213,7 @@ async def test_load_with_existed_weather_forecast_data(
 
     Logger should logs first run as insert, and second run as update.
     """
-    caplog.set_level(logging.INFO)
+    caplog.set_level(logging.DEBUG)
 
     await loader.load_transformed_forecast("")
     first_run_rows = await read_forecast_table_rows(loader)

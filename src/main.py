@@ -44,6 +44,7 @@ def setup_logging() -> None:
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
 
+
 def get_env(key: str) -> str:
     value = os.getenv(key)
     if not value:

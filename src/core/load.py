@@ -71,7 +71,7 @@ class LoadForecast:
                 f"Load(location_table): ignore location: adm4_code {location_data.adm4_code}"
             )
             return
-        logger.info(
+        logger.debug(
             f"Load(location_table): insert location: adm4_code {location_data.adm4_code}"
         )
 
@@ -94,11 +94,11 @@ class LoadForecast:
         result = await conn.execute(upsert_stmt)
         row = result.fetchone()
         if row and row.created_at == forecast_data.created_at:
-            logger.info(
+            logger.debug(
                 f"Load(forecast_table): insert forecast: {forecast_data.forecast_datetime} on {forecast_data.adm4_code}"
             )
             return
-        logger.info(
+        logger.debug(
             f"Load(forecast_table): update forecast: {forecast_data.forecast_datetime} on {forecast_data.adm4_code}"
         )
 

@@ -6,5 +6,5 @@ __pycache__
 .ruff_cache
 *.ipynb
 *.db
-*.log
+/logs
 .env
