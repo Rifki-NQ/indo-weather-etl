@@ -13,8 +13,8 @@ class ETLRunner:
 
     def __init__(self, loader: LoadProtocol) -> None:
         self.loader = loader
-        self.successfull_task = 0
-        self.failed_task = 0
+        self.successful_tasks = 0
+        self.total_tasks = 0
         self.active_tasks: set[asyncio.Task[None]] = set()
         self.semaphore = asyncio.Semaphore(self.MAX_CONCURRENT_TASKS)
 
@@ -23,7 +23,14 @@ class ETLRunner:
         for adm4_code in adm4_codes:
             await self.semaphore.acquire()
             self._create_runner_task(adm4_code)
+            self.total_tasks += 1
             await asyncio.sleep(self.TASK_DELAY)
+        if self.active_tasks:
+            # wait until all remaining tasks are finished
+            await asyncio.wait(self.active_tasks)
+        logger.info(
+            f"{self.successful_tasks} / {self.total_tasks} tasks finished successfully"
+        )
 
     def _create_runner_task(self, adm4_code: str) -> None:
         """Create the runner task then add it to self.active_tasks."""
@@ -35,10 +42,7 @@ class ETLRunner:
 
     def _handle_task_completion(self, task: asyncio.Task[None]) -> None:
         try:
-            result = task.result()
-            if result is None:
-                logger.info(f"Task: {task.get_name()} finished successfully")
-                return
+            task.result()
         except InvalidAdm4CodeError as e:
             logger.error(f"Invalid adm4_code: {e.adm4_code}")
         except DomainError as e:
@@ -47,6 +51,10 @@ class ETLRunner:
             logger.error("Task was cancelled")
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
+        else:
+            logger.info(f"Task: {task.get_name()} finished successfully")
+            self.successful_tasks += 1
+            return
         finally:
             self.semaphore.release()
             self.active_tasks.discard(task)
