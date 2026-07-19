@@ -1,0 +1,11 @@
+Kode,Provinsi,Kabupaten/Kota,Kecamatan,Desa/Kelurahan
+32.01.01.1001,Jawa Barat,Kabupaten Bogor,Cibinong,Pondok Rajeg
+32.01.01.1002,Jawa Barat,Kabupaten Bogor,Cibinong,Karadenan
+32.01.01.1003,Jawa Barat,Kabupaten Bogor,Cibinong,Harapanjaya
+32.01.01.1004,Jawa Barat,Kabupaten Bogor,Cibinong,Nanggewer
+32.01.01.1005,Jawa Barat,Kabupaten Bogor,Cibinong,Nanggewer Mekar
+32.01.01.1006,Jawa Barat,Kabupaten Bogor,Cibinong,Cibinong
+32.01.01.1007,Jawa Barat,Kabupaten Bogor,Cibinong,Pakansari
+32.01.01.1008,Jawa Barat,Kabupaten Bogor,Cibinong,Tengah
+32.01.01.1009,Jawa Barat,Kabupaten Bogor,Cibinong,Sukahati
+32.01.01.1010,Jawa Barat,Kabupaten Bogor,Cibinong,Ciriung
