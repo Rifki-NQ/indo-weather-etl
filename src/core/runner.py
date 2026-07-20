@@ -13,8 +13,9 @@ class ETLRunner:
 
     def __init__(self, loader: LoadProtocol) -> None:
         self.loader = loader
-        self.successful_tasks = 0
         self.total_tasks = 0
+        self.successful_tasks = 0
+        self.peak_active_tasks = 0
         self.active_tasks: set[asyncio.Task[None]] = set()
         self.semaphore = asyncio.Semaphore(self.MAX_CONCURRENT_TASKS)
 
@@ -31,6 +32,9 @@ class ETLRunner:
         logger.info(
             f"{self.successful_tasks} / {self.total_tasks} tasks finished successfully"
         )
+        logger.info(f"Task creation delay: {self.TASK_DELAY}")
+        logger.info(f"Peak concurrency: {self.peak_active_tasks}")
+        
 
     def _create_runner_task(self, adm4_code: str) -> None:
         """Create the runner task then add it to self.active_tasks."""
@@ -38,6 +42,7 @@ class ETLRunner:
         task.set_name(f"Task-{adm4_code}")
         task.add_done_callback(self._handle_task_completion)
         self.active_tasks.add(task)
+        self.peak_active_tasks = max(self.peak_active_tasks, len(self.active_tasks))
         logger.info(f"Task: {task.get_name()} created")
 
     def _handle_task_completion(self, task: asyncio.Task[None]) -> None:
