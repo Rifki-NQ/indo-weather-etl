@@ -1,6 +1,6 @@
 # indo-weather-etl
 
-An ETL Pipeline designed to extract data from public weather forecast API provided by [BMKG](https://data.bmkg.go.id/prakiraan-cuaca/), tranform the extracted data then load it into Postgresql
+An ETL Pipeline designed to extract data from public weather forecast API provided by [BMKG](https://data.bmkg.go.id/prakiraan-cuaca/), transform the extracted data then load it into PostgreSQL
 
 ---
 
@@ -38,25 +38,45 @@ pip install -e ".[dev]"
 
 ---
 
+## Environment Variables
+
+This project loads configuration from a `.env` file. Copy the example file and fill in your own values:
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Description | Required | Example |
+| -------- | ----------- | -------- | ------- |
+| `DATABASE_URL` | Async PostgreSQL connection string for the main (production) database | Yes | `postgresql+asyncpg://user:pass@host/neondb?ssl=require` |
+| `TEST_DATABASE_URL` | Async PostgreSQL connection string for a **separate, dedicated test database** — not a branch of the main DB | Yes | `postgresql+asyncpg://user:pass@host/neondb_test?ssl=require` |
+| `ADM4_CODES_PATH` | Path to the CSV containing adm4 codes to ingest | Yes | `myfolder/adm4_codes.csv` |
+
+> `.env` is git-ignored — never commit real credentials. Keep `.env.example` updated with placeholder values whenever a new variable is added.
+> `DATABASE_URL` and `TEST_DATABASE_URL` point to **two distinct Neon databases**, not branches of the same one — running tests will not affect production data, but you'll need to run migrations/seed data on both independently.
+
+---
+
 ## Usage
 
 Run the pipeline with:
 
 ```bash
-weather --adm4 <adm4_code>
+run_etl
 ```
 
-> `adm4_code` is Indonesia's administrative area code down to the village level.
+> - make sure the `CSV` file with a column of `adm4 codes` exists for the runner to ingest, see the example in [`jawa_barat.csv`](adm4_codes/jawa_barat.csv)
+> - `adm4_code` is Indonesia's administrative area code down to the village level.
 > See the full reference: [Kode Wilayah Administrasi Pemerintahan seluruh Indonesia](https://m.nomor.net/_kodepos.php?_i=kode-wilayah).
 
-Output is written to `database/`, with logs in `logs/`.
+logs output is written in `logs/`.
 
 ---
 
 ## Architecture Overview
 
-This project is split into three layers that form a linear pipeline:
-**extract → transform → load**. Each layer is loosely coupled through
+This project is split into four layers that form a linear pipeline:
+**extract → transform → load → runner**. Each layer is loosely coupled through
 [Protocols](src/core/models/protocols.py), which define the boundaries between them and make the pipeline easier to test.
 
 ### Extract Layer
@@ -93,7 +113,7 @@ The transformation happens lazily — results are yielded as an `AsyncIterable`,
 
 The load layer lives in [`src/core/load.py`](src/core/load.py).
 
-This layer receives an `AsyncIterable` from the **transform** layer and iterates over it, loading each record into the database. It uses `Postgresql` through [Neon serverless postgres](https://neon.com/docs/introduction/serverless) as the cloud storage and [`SQLAlchemy Core`](https://docs.sqlalchemy.org/en/20/core/) to interact with `Postgresql` through Python objects rather than raw SQL strings.
+This layer receives an `AsyncIterable` from the **transform** layer and iterates over it, loading each record into the database. It uses `PostgreSQL` through [Neon serverless postgres](https://neon.com/docs/introduction/serverless) as the cloud storage and [`SQLAlchemy Core`](https://docs.sqlalchemy.org/en/20/core/) to interact with `PostgreSQL` through Python objects rather than raw SQL strings.
 
 Data is modeled using a star schema, producing two tables:
 
@@ -102,14 +122,36 @@ weather_forecast   # fact table — contains weather forecast data produced by t
 forecast_location  # dimension table — contains location data for each forecast
 ```
 
-The load layer uses upsert logic: `INSERT OR IGNORE` for `forecast_location` and `INSERT OR UPDATE` for `weather_forecast`. The `INSERT OR IGNORE` strategy for `forecast_location` is intentional — location data from the API rarely changes, so silently skipping duplicates is the safe choice.
+The load layer uses upsert logic: `ON CONFLICT DO NOTHING` for `forecast_location` and `ON CONFLICT DO UPDATE` for `weather_forecast`. The `ON CONFLICT DO NOTHING` strategy for `forecast_location` is intentional — location data from the API rarely changes, so silently skipping duplicates is the safe choice.
+
+### Runner Layer
+
+The runner layer lives in [`src/core/runner.py`](src/core/runner.py)
+
+This layer has the responsibility to run the `etl` in batch, it uses `asyncio.create_task()` to run each single adm4_code task concurrently, `with asyncio.Semaphore()` to limit the concurrency and `asyncio.sleep()` to add delays between each task creation to respect the API rate limit.
 
 ---
 
 ## Running Tests
 
+### Running Full Tests
+
+With a note, this includes integration test in [`tests/test_loader.py`](tests/test_loader.py)
+
 ```bash
 pytest tests/
+```
+
+### Running Non-Integration Tests Only
+
+```bash
+pytest -m "not integration" tests/
+```
+
+### Running Integration Tests Only
+
+```bash
+pytest -m "integration" tests/
 ```
 
 ---
