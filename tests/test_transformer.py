@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from datetime import datetime
 from collections.abc import AsyncIterable, AsyncGenerator
 from tests.mock_class.mock_extract import MockExtractForecast
@@ -25,7 +25,9 @@ async def transformed_forecast(
     transformer: TransformForecast,
 ) -> AsyncGenerator[tuple[LocationModel, AsyncIterable[ForecastModel]], None]:
     """Patch _current_datetime to deterministic hardcoded datetime"""
-    with patch.object(transformer, "_current_datetime", new=MOCK_CURRENT_DATETIME):
+    with patch.object(
+        transformer, "_current_datetime", return_value=MOCK_CURRENT_DATETIME
+    ):
         yield await transformer.get_transformed_forecast("")
 
 
@@ -99,3 +101,14 @@ async def test_transformed_weather_forecast_first_values(
         assert data.updated_at == MOCK_CURRENT_DATETIME
         assert data.created_at == MOCK_CURRENT_DATETIME
         break
+
+
+def test_current_datetime_has_no_tzinfo() -> None:
+    """
+    Test that self._current_datetime() returns a datetime converted to
+    a specific timezone using ZoneInfo, with tzinfo removed after conversion.
+
+    Uses a new instance of TransformForecast without self._current_datetime() patched.
+    """
+    transformer = TransformForecast(MagicMock())
+    assert transformer._current_datetime().tzinfo is None  # pyright: ignore[reportPrivateUsage]

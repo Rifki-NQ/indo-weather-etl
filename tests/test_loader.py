@@ -49,7 +49,7 @@ async def drop_all_tables(conn: AsyncConnection) -> None:
 async def loader() -> AsyncGenerator[LoadForecast, None]:
     transformer = TransformForecast(MockExtractForecast())
     with patch.object(
-        transformer, "_current_datetime", new=MOCK_FIRST_RUN_CURRENT_DATETIME
+        transformer, "_current_datetime", return_value=MOCK_FIRST_RUN_CURRENT_DATETIME
     ):
         loader = await make_loader(transformer)
         yield loader
@@ -65,7 +65,7 @@ async def loader_with_different_forecast_location() -> AsyncGenerator[
 ]:
     transformer = TransformForecast(MockExtractForecastBA())
     with patch.object(
-        transformer, "_current_datetime", new=MOCK_FIRST_RUN_CURRENT_DATETIME
+        transformer, "_current_datetime", return_value=MOCK_FIRST_RUN_CURRENT_DATETIME
     ):
         loader = await make_loader(transformer)
         yield loader
@@ -81,7 +81,7 @@ async def loader_with_different_weather_forecast() -> AsyncGenerator[
 ]:
     transformer = TransformForecast(MockExtractForecastAB())
     with patch.object(
-        transformer, "_current_datetime", new=MOCK_SECOND_RUN_CURRENT_DATETIME
+        transformer, "_current_datetime", return_value=MOCK_SECOND_RUN_CURRENT_DATETIME
     ):
         loader = await make_loader(transformer)
         yield loader
