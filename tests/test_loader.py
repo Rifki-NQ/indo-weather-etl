@@ -14,8 +14,8 @@ from tests.mock_class.mock_extract import (
     MockExtractForecastAB,
 )
 from src.main import get_env
-from src.core.transform import TransformForecast
-from src.core.load import LoadForecast
+from src.core.etl.transform import TransformForecast
+from src.core.etl.load import LoadForecast
 from src.core.exceptions import DBNotInitializedError
 
 

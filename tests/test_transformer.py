@@ -3,7 +3,7 @@ from unittest.mock import patch
 from datetime import datetime
 from collections.abc import AsyncIterable, AsyncGenerator
 from tests.mock_class.mock_extract import MockExtractForecast
-from src.core.transform import TransformForecast
+from src.core.etl.transform import TransformForecast
 from src.core.models.domain_model import LocationModel, ForecastModel
 
 

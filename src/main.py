@@ -6,9 +6,9 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from httpx import AsyncClient
 from dotenv import load_dotenv
-from src.core.extract import ExtractForecast
-from src.core.transform import TransformForecast
-from src.core.load import LoadForecast
+from src.core.etl.extract import ExtractForecast
+from src.core.etl.transform import TransformForecast
+from src.core.etl.load import LoadForecast
 from src.core.runner import ETLRunner
 from src.core.utils import yield_csv_value
 from src.core.exceptions import DomainError

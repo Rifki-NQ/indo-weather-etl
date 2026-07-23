@@ -8,7 +8,7 @@ from tests.mock_data.mock_forecast_data import (
     MOCKED_FORECAST_WITH_ONE_MALFORED_DATA,
     MOCKED_FORECAST_WITH_ALL_MALFORED_DATA,
 )
-from src.core.extract import ExtractForecast
+from src.core.etl.extract import ExtractForecast
 from src.core.models.raw_model import RawForecast
 from src.core.exceptions import (
     MaxRetryAttemptError,

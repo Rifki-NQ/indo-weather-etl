@@ -36,7 +36,9 @@ async def test_runner_on_invalid_adm4_codes(
 ) -> None:
     caplog.set_level(logging.ERROR)
     with patch.object(
-        etl_runner.loader, "load_transformed_forecast", side_effect=InvalidAdm4CodeError("")
+        etl_runner.loader,
+        "load_transformed_forecast",
+        side_effect=InvalidAdm4CodeError(""),
     ):
         await etl_runner.run_batch(yield_csv_value(MOCK_ADM4_CODES_PATH, "Kode"))
         for log in caplog.records:

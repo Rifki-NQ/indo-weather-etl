@@ -34,7 +34,6 @@ class ETLRunner:
         )
         logger.info(f"Task creation delay: {self.TASK_DELAY}")
         logger.info(f"Peak concurrency: {self.peak_active_tasks}")
-        
 
     def _create_runner_task(self, adm4_code: str) -> None:
         """Create the runner task then add it to self.active_tasks."""
