@@ -1,18 +1,19 @@
 import asyncio
 import logging
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from collections.abc import AsyncIterable
 from src.core.models.raw_model import RawLocation, RawForecast
 from src.core.models.domain_model import LocationModel, ForecastModel
 from src.core.models.protocols import ExtractProtocol
 
 logger = logging.getLogger(__name__)
+ETL_TIMEZONE = ZoneInfo("Asia/Jakarta")
 
 
 class TransformForecast:
     def __init__(self, extractor: ExtractProtocol) -> None:
         self.extractor = extractor
-        self._current_datetime = datetime.now().replace(microsecond=0)
 
     async def get_transformed_forecast(
         self, adm4_code: str
@@ -35,6 +36,7 @@ class TransformForecast:
     def _transform_single_forecast(
         self, adm4_code: str, single_raw_forecast: RawForecast
     ) -> ForecastModel:
+        current_datetime = self._current_datetime()
         return ForecastModel(
             forecast_datetime=single_raw_forecast.local_datetime,
             analysis_datetime=single_raw_forecast.analysis_date,
@@ -50,8 +52,8 @@ class TransformForecast:
             wind_speed=single_raw_forecast.ws,
             humidity=single_raw_forecast.hu,
             visibility=single_raw_forecast.vs,
-            updated_at=self._current_datetime,
-            created_at=self._current_datetime,
+            updated_at=current_datetime,
+            created_at=current_datetime,
         )
 
     def _transform_forecast_location(self, raw_location: RawLocation) -> LocationModel:
@@ -70,3 +72,6 @@ class TransformForecast:
                 exclude={"adm1", "adm2", "adm3", "adm4", "adm4_code", "type"}
             ),
         )
+
+    def _current_datetime(self) -> datetime:
+        return datetime.now(tz=ETL_TIMEZONE).replace(tzinfo=None)
