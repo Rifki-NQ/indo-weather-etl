@@ -1,5 +1,6 @@
 from typing import Protocol
 from collections.abc import AsyncIterable
+from src.core.models.contexts import DBContext
 from src.core.models.raw_model import RawLocation, RawForecast
 from src.core.models.domain_model import LocationModel, ForecastModel
 
@@ -17,5 +18,5 @@ class TransformProtocol(Protocol):
 
 
 class LoadProtocol(Protocol):
-    async def setup_db(self, db_url: str) -> None: ...
+    async def setup_db(self, db_url: str) -> DBContext: ...
     async def load_transformed_forecast(self, adm4_code: str) -> None: ...

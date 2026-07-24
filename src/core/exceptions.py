@@ -64,7 +64,13 @@ class DBNotInitializedError(LoaderError):
         self.message = message
         super().__init__(f"Error: {message}")
 
-    pass
+
+class DBAlreadyInitializedError(LoaderError):
+    """Raised when the setup_db() is called more than once"""
+
+    def __init__(self, message: str) -> None:
+        self.message = message
+        super().__init__(f"Error: {message}")
 
 
 class NotFileError(FileHandlingError):

@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncConnection
 from src.core.models.contexts import DBContext
 from src.core.models.domain_model import LocationModel, ForecastModel
 from src.core.models.protocols import TransformProtocol
-from src.core.exceptions import DBNotInitializedError
+from src.core.exceptions import DBNotInitializedError, DBAlreadyInitializedError
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +24,10 @@ class LoadForecast:
         self.transformer = transformer
         self._db: DBContext | None = None
 
-    async def setup_db(self, db_url: str) -> None:
-        """Must be called before load_transformed_forecast()."""
+    async def setup_db(self, db_url: str) -> DBContext:
+        """Must be called once before load_transformed_forecast()."""
+        if self._db is not None:
+            raise DBAlreadyInitializedError("setup_db() can only be called once")
         engine = create_async_engine(url=db_url, pool_pre_ping=True)
         metadata = MetaData()
         location_table = self._define_forecast_location_table(metadata)
@@ -33,6 +35,7 @@ class LoadForecast:
         async with engine.begin() as conn:
             await conn.run_sync(metadata.create_all)
             self._db = DBContext(engine, location_table, forecast_table)
+        return self._db
 
     async def load_transformed_forecast(self, adm4_code: str) -> None:
         db = self._get_db()
