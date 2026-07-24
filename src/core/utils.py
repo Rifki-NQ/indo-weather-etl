@@ -1,5 +1,7 @@
 import csv
 import logging
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from collections.abc import Iterable
 from src.core.exceptions import (
@@ -10,6 +12,7 @@ from src.core.exceptions import (
 )
 
 logger = logging.getLogger(__name__)
+ETL_TIMEZONE = ZoneInfo("Asia/Jakarta")
 
 
 def yield_csv_value(filepath: Path, column_name: str) -> Iterable[str]:
@@ -33,3 +36,8 @@ def yield_csv_value(filepath: Path, column_name: str) -> Iterable[str]:
                 yield row[column_name]
 
     return _yield()
+
+
+def get_current_datetime() -> datetime:
+    """Get current datetime in Asia/Jakarta timezone, with tzinfo removed."""
+    return datetime.now(tz=ETL_TIMEZONE).replace(tzinfo=None)

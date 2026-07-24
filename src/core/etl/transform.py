@@ -1,14 +1,13 @@
 import asyncio
 import logging
 from datetime import datetime
-from zoneinfo import ZoneInfo
 from collections.abc import AsyncIterable
 from src.core.models.raw_model import RawLocation, RawForecast
+from src.core.utils import get_current_datetime
 from src.core.models.domain_model import LocationModel, ForecastModel
 from src.core.models.protocols import ExtractProtocol
 
 logger = logging.getLogger(__name__)
-ETL_TIMEZONE = ZoneInfo("Asia/Jakarta")
 
 
 class TransformForecast:
@@ -74,4 +73,4 @@ class TransformForecast:
         )
 
     def _current_datetime(self) -> datetime:
-        return datetime.now(tz=ETL_TIMEZONE).replace(tzinfo=None)
+        return get_current_datetime()
