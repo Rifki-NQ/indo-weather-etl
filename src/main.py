@@ -9,8 +9,9 @@ from dotenv import load_dotenv
 from src.core.etl.extract import ExtractForecast
 from src.core.etl.transform import TransformForecast
 from src.core.etl.load import LoadForecast
+from src.core.db_balancer import delete_past_forecasts
 from src.core.runner import ETLRunner
-from src.core.utils import yield_csv_value
+from src.core.utils import yield_csv_value, get_current_datetime
 from src.core.exceptions import DomainError
 
 logger = logging.getLogger(__name__)
@@ -58,7 +59,8 @@ async def run_app(adm4_codes_path: str, db_url: str) -> None:
         extractor = ExtractForecast(client)
         transformer = TransformForecast(extractor)
         loader = LoadForecast(transformer)
-        await loader.setup_db(db_url)
+        db = await loader.setup_db(db_url)
+        await delete_past_forecasts(db, get_current_datetime())
         runner = ETLRunner(loader)
         await runner.run_batch(yield_csv_value(Path(adm4_codes_path), "Kode"))
     logger.info("App finished successfully")
@@ -72,10 +74,13 @@ def main() -> None:
     adm4_codes_path = get_env("ADM4_CODES_PATH")
     try:
         asyncio.run(run_app(adm4_codes_path, db_url))
+        sys.exit(0)
     except DomainError as e:
         logger.critical(e)
-        logger.info("App finished with error")
-        sys.exit(1)
+    except Exception as e:
+        logger.critical(e, exc_info=True)
+    logger.info("App finished with error")
+    sys.exit(1)
 
 
 if __name__ == "__main__":
