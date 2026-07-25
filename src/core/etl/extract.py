@@ -18,9 +18,9 @@ logger = logging.getLogger(__name__)
 class ExtractForecast:
     BASE_URL = "https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4="
     REQUEST_TIMEOUT = 3.0
-    REQUEST_DELAY = 1.0
     RETRY_MAX_ATTEMPT = 5
     RETRY_DELAY = 5.0
+    RATE_LIMITED_BACKOFF = 60
 
     def __init__(self, client: httpx.AsyncClient) -> None:
         self.client = client
@@ -52,12 +52,12 @@ class ExtractForecast:
                 )
                 if e.response.status_code == 429:
                     retry_after = e.response.headers.get("Retry-After")
+                    backoff_value = self._parse_retry_after(retry_after)
                     logger.warning(
-                        f"Extractor: rate limited, retry after {retry_after} seconds"
+                        f"Extractor: rate limited, retry after {backoff_value} seconds"
                     )
-                    if retry_after:
-                        await asyncio.sleep(int(retry_after))
-                        continue
+                    await asyncio.sleep(backoff_value)
+                    continue
             except httpx.HTTPError as e:
                 logger.warning(f"Extractor: http error occured: {repr(e)}")
             logger.info(
@@ -73,7 +73,6 @@ class ExtractForecast:
         if response.status_code == 404:
             raise InvalidAdm4CodeError(adm4_code)
         response.raise_for_status()
-        await asyncio.sleep(self.REQUEST_DELAY)
         return response
 
     def _convert_all_forecast(
@@ -128,3 +127,20 @@ class ExtractForecast:
                 f"Extractor: skipping malformed forecast entry: {err[0]['loc']} {err[0]['msg']}"
             )
             return None
+
+    def _parse_retry_after(self, retry_after: str | int | None) -> int:
+        """
+        Return default value of backoff - RATE_LIMITED_BACKOFF if the retry_after value
+        is None or non-convertible string, if it's convertible string, convert the value
+        to int then return it, if the value is already an int, return as it is.
+        """
+        if retry_after is None:
+            return self.RATE_LIMITED_BACKOFF
+        if isinstance(retry_after, str):
+            try:
+                value = int(retry_after)
+            except ValueError:
+                return self.RATE_LIMITED_BACKOFF
+        else:
+            value = retry_after
+        return max(0, value)  # return 0 if the value is minus int
