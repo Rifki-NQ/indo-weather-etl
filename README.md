@@ -81,7 +81,7 @@ This project is split into four layers that form a linear pipeline:
 
 ### Extract Layer
 
-The extract layer lives in [`src/core/extract.py`](src/core/extract.py).
+The extract layer lives in [`src/core/etl/extract.py`](src/core/etl/extract.py).
 
 Extract layer has the responsibility to make HTTP requests using [`httpx`](https://www.python-httpx.org/), it then validates the incoming BMKG API data using [`Pydantic`](https://pydantic.dev/docs/validation) — invalid forecast entries are silently skipped, and an error is raised only if the entire response is unusable. Validation and model conversion happen lazily via an async iterable: data is yielded one item at a time, with `await asyncio.sleep(0)` inserted after each yield to cooperate with the event loop.
 
@@ -99,7 +99,7 @@ RETRY_DELAY          # delay between each retry attempt
 
 ### Transform Layer
 
-The transform layer lives in [`src/core/transform.py`](src/core/transform.py)
+The transform layer lives in [`src/core/etl/transform.py`](src/core/etl/transform.py)
 
 This layer receives data from the extract layer. It loops over the iterable forecast data and converts each location and forecast entry into a [dataclass](src/core/models/domain_model.py) — the pipeline's
 own domain model.
@@ -111,7 +111,7 @@ The transformation happens lazily — results are yielded as an `AsyncIterable`,
 
 ### Load Layer
 
-The load layer lives in [`src/core/load.py`](src/core/load.py).
+The load layer lives in [`src/core/etl/load.py`](src/core/etl/load.py).
 
 This layer receives an `AsyncIterable` from the **transform** layer and iterates over it, loading each record into the database. It uses `PostgreSQL` through [Neon serverless postgres](https://neon.com/docs/introduction/serverless) as the cloud storage and [`SQLAlchemy Core`](https://docs.sqlalchemy.org/en/20/core/) to interact with `PostgreSQL` through Python objects rather than raw SQL strings.
 
@@ -129,6 +129,12 @@ The load layer uses upsert logic: `ON CONFLICT DO NOTHING` for `forecast_locatio
 The runner layer lives in [`src/core/runner.py`](src/core/runner.py)
 
 This layer has the responsibility to run the `etl` in batch, it uses `asyncio.create_task()` to run each single adm4_code task concurrently, `with asyncio.Semaphore()` to limit the concurrency and `asyncio.sleep()` to add delays between each task creation to respect the API rate limit.
+
+### Additional Layer
+
+This project also includes a helper layer, [`src/core/db_balancer.py`](src/core/db_balancer.py), responsible for keeping database size under control by pruning stale data from the `weather_forecast` table.
+
+`db_balancer` deletes any `weather_forecast` rows whose `forecast_datetime` has already passed relative to the ETL run time. Since forecasts for past timestamps are no longer useful, this prevents the table from growing unbounded over time.
 
 ---
 
