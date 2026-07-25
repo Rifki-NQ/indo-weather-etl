@@ -6,8 +6,8 @@ from unittest.mock import patch
 from datetime import datetime
 from typing import Any
 from collections.abc import Sequence, AsyncGenerator
-from sqlalchemy import Connection, Row, MetaData, select, inspect
-from sqlalchemy.ext.asyncio import AsyncConnection
+from sqlalchemy import Connection, Row, select, inspect
+from tests.utils import drop_all_tables, read_forecast_table_rows
 from tests.mock_class.mock_extract import (
     MockExtractForecast,
     MockExtractForecastBA,
@@ -37,12 +37,6 @@ async def make_loader(
     loader = LoadForecast(transformer)
     await loader.setup_db(test_db_url)
     return loader
-
-
-async def drop_all_tables(conn: AsyncConnection) -> None:
-    metadata = MetaData()
-    await conn.run_sync(metadata.reflect)
-    await conn.run_sync(metadata.drop_all)
 
 
 @pytest_asyncio.fixture
@@ -94,14 +88,6 @@ async def loader_with_different_weather_forecast() -> AsyncGenerator[
 async def read_location_table_rows(loader_obj: LoadForecast) -> Sequence[Row[Any]]:
     db = loader_obj._get_db()  # pyright: ignore[reportPrivateUsage]
     stmt = select(db.location_table)
-    async with db.engine.begin() as conn:
-        result = await conn.execute(stmt)
-        return result.fetchall()
-
-
-async def read_forecast_table_rows(loader_obj: LoadForecast) -> Sequence[Row[Any]]:
-    db = loader_obj._get_db()  # pyright: ignore[reportPrivateUsage]
-    stmt = select(db.forecast_table).order_by(db.forecast_table.c.forecast_datetime)
     async with db.engine.begin() as conn:
         result = await conn.execute(stmt)
         return result.fetchall()
