@@ -5,6 +5,7 @@ from tests.mock_data.mock_flattened_data import (
     MOCKED_WEATHER_FORECAST_DATA_A,
     MOCKED_FORECAST_LOCATION_DATA_B,
     MOCKED_WEATHER_FORECAST_DATA_B,
+    MOCKED_WEATHER_FORECAST_DATA_FULL,
 )
 from src.core.models.raw_model import RawLocation, RawForecast
 
@@ -41,5 +42,17 @@ class MockExtractForecastAB:
 
     async def _yield_forecast(self) -> AsyncIterable[RawForecast]:
         for data in MOCKED_WEATHER_FORECAST_DATA_B:
+            yield RawForecast(**data)
+            await asyncio.sleep(0)
+
+
+class MockExtractForecastFull:
+    async def get_forecast(
+        self, adm4_code: str
+    ) -> tuple[RawLocation, AsyncIterable[RawForecast]]:
+        return RawLocation(**MOCKED_FORECAST_LOCATION_DATA_A), self._yield_forecast()
+
+    async def _yield_forecast(self) -> AsyncIterable[RawForecast]:
+        for data in MOCKED_WEATHER_FORECAST_DATA_FULL:
             yield RawForecast(**data)
             await asyncio.sleep(0)
