@@ -142,7 +142,7 @@ This project also includes a helper layer, [`src/core/db_balancer.py`](src/core/
 
 ### Running Full Tests
 
-With a note, this includes integration test in [`tests/test_loader.py`](tests/test_loader.py)
+With a note, this includes integration tests in [`tests/test_loader.py`](tests/test_loader.py) and [`tests/test_db_balancer.py`](tests/test_db_balancer.py)
 
 ```bash
 pytest tests/
