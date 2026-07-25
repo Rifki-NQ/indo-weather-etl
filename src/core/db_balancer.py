@@ -9,8 +9,10 @@ logger = logging.getLogger(__name__)
 async def delete_past_forecasts(
     db: DBContext,
     date_to: date | datetime,
-) -> None:
-    """Delete all rows of weather_forecast table up until given 'date_to'."""
+) -> int | None:
+    """
+    Delete all rows of weather_forecast table up until given 'date_to',
+    return deleted rows count if there is deleted rows, return None if not."""
     if isinstance(date_to, datetime):
         # Deletion is day-scoped; drop the time component.
         date_to = date_to.date()
@@ -26,5 +28,7 @@ async def delete_past_forecasts(
             logger.info(
                 f"deleted weather_forecast: {len(deleted)} rows, range {min(deleted)} to {max(deleted)}"
             )
+            return len(deleted)
         else:
             logger.info("no rows to delete")
+            return None
