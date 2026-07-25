@@ -16,7 +16,7 @@ from tests.mock_class.mock_extract import (
 from src.main import get_env
 from src.core.etl.transform import TransformForecast
 from src.core.etl.load import LoadForecast
-from src.core.exceptions import DBNotInitializedError
+from src.core.exceptions import DBNotInitializedError, DBAlreadyInitializedError
 
 
 pytestmark = pytest.mark.integration
@@ -112,6 +112,11 @@ async def test_load_transformed_forecast_without_setup_db_first() -> None:
     loader = LoadForecast(transformer)
     with pytest.raises(DBNotInitializedError):
         await loader.load_transformed_forecast("")
+
+
+async def test_setup_db_twice(loader: LoadForecast) -> None:
+    with pytest.raises(DBAlreadyInitializedError):
+        await loader.setup_db("")
 
 
 async def test_tables_exists(loader: LoadForecast) -> None:
