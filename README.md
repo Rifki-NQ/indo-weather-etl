@@ -90,11 +90,11 @@ The layer also includes a retry mechanism to handle the inherent fragility of HT
 Five class-level constants control this behavior:
 
 ```bash
-BASE_URL             # base URL of the BMKG weather forecast API
-REQUEST_TIMEOUT      # seconds before an unresponsive request is cancelled
-REQUEST_DELAY        # delay between successive requests
-RETRY_MAX_ATTEMPT    # maximum number of retry attempts on failure
-RETRY_DELAY          # delay between each retry attempt
+BASE_URL              # base URL of the BMKG weather forecast API
+REQUEST_TIMEOUT       # seconds before an unresponsive request is cancelled
+RETRY_MAX_ATTEMPT     # maximum number of retry attempts on failure
+RETRY_DELAY           # delay between each retry attempt
+RATE_LIMITED_BACKOFF  # default backoff value when rate limited
 ```
 
 ### Transform Layer
