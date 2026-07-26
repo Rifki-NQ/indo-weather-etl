@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 import logging
-from httpx import HTTPError
+from httpx import HTTPError, HTTPStatusError
 from typing import Any
 from tests.mock_data.mock_forecast_data import (
     MOCKED_FORECAST_DATA,
@@ -17,7 +17,7 @@ from src.core.exceptions import (
     AllForecastDataMalformedError,
 )
 
-# current max_attempt value = 5
+RATE_LIMITED_BACKOFF = ExtractForecast.RATE_LIMITED_BACKOFF
 
 
 @pytest.fixture
@@ -117,3 +117,90 @@ async def test_convert_all_forecast_with_empty_forecast_data(
     with pytest.raises(EmptyForecastDataError):
         async for _ in extractor._convert_all_forecast(forecast_data, ""):  # pyright: ignore[reportPrivateUsage]
             pass
+
+
+# helper function
+async def setup_rate_limited_test(
+    retry_after_value: int | str | None,
+    caplog: pytest.LogCaptureFixture,
+    extractor: ExtractForecast,
+) -> list[str]:
+    """
+    Patch extractor._request to raise an HTTPStatusError (429, with the given
+    Retry-After header) on the first call, then succeed on the second call,
+    and drive extractor._request_with_retry through that retry.
+
+    Args:
+        retry_after_value: value to set for the mocked response's Retry-After header.
+        caplog: pytest fixture for capturing log output.
+        extractor: the ExtractForecast instance under test.
+
+    Returns:
+        Captured WARNING-level log messages emitted during the retry.
+    """
+    caplog.set_level(logging.WARNING)
+    mock_response = MagicMock()
+    mock_response.status_code = 429
+    mock_response.headers = {"Retry-After": retry_after_value}
+    status_error_429 = HTTPStatusError(
+        "Too many request", request=MagicMock(), response=mock_response
+    )
+    with (
+        patch("asyncio.sleep"),
+        patch.object(
+            extractor,
+            "_request",
+            new_callable=AsyncMock,
+            side_effect=[status_error_429, None],
+        ),
+    ):
+        await extractor._request_with_retry("", 5, 5)  # pyright: ignore[reportPrivateUsage]
+    return caplog.messages
+
+
+async def test_rate_limited_retry_after_return_int(
+    caplog: pytest.LogCaptureFixture, extractor: ExtractForecast
+) -> None:
+    """Test when raised exc.response.header['Retry-After'] returns an int value."""
+    retry_after_value = 10
+    logs = await setup_rate_limited_test(retry_after_value, caplog, extractor)
+    assert f"retry after {retry_after_value}" in logs[1]
+
+
+async def test_rate_limited_retry_after_return_convertible_str(
+    caplog: pytest.LogCaptureFixture, extractor: ExtractForecast
+) -> None:
+    """Test when raised exc.response.header['Retry-After'] returns a convertible str value."""
+    retry_after_value = "10"
+    logs = await setup_rate_limited_test(retry_after_value, caplog, extractor)
+    assert f"retry after {retry_after_value}" in logs[1]
+
+
+async def test_rate_limited_retry_after_return_non_convertible_str(
+    caplog: pytest.LogCaptureFixture, extractor: ExtractForecast
+) -> None:
+    """Test when raised exc.response.header['Retry-After'] return a non-convertible str value,
+    it then should use the default value: ExtractForecast.RATE_LIMITED_BACKOFF."""
+    retry_after_value = "non convertible"
+    logs = await setup_rate_limited_test(retry_after_value, caplog, extractor)
+    assert f"retry after {RATE_LIMITED_BACKOFF}" in logs[1]
+
+
+async def test_rate_limited_retry_after_is_absent(
+    caplog: pytest.LogCaptureFixture, extractor: ExtractForecast
+) -> None:
+    """Test when raised exc.response.header['Retry-After'] is absent, which means it returns None,
+    it then should use the default value: ExtractForecast.RATE_LIMITED_BACKOFF."""
+    retry_after_value = None
+    logs = await setup_rate_limited_test(retry_after_value, caplog, extractor)
+    assert f"retry after {RATE_LIMITED_BACKOFF}" in logs[1]
+
+
+async def test_rate_limited_retry_after_return_minus_int(
+    caplog: pytest.LogCaptureFixture, extractor: ExtractForecast
+) -> None:
+    """Test when raised exc.response.header['Retry-After'] returns a minus int value,
+    it then should returns the value as 0."""
+    retry_after_value = -10
+    logs = await setup_rate_limited_test(retry_after_value, caplog, extractor)
+    assert "retry after 0" in logs[1]

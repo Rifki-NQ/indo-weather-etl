@@ -12,7 +12,7 @@ from src.core.db_balancer import delete_past_forecasts
 
 pytestmark = pytest.mark.integration
 
-# the dates are based on mocked data: MOCKED_WEATHER_FORECAST_DATA_A
+# the dates are based on mocked data: MOCKED_WEATHER_FORECAST_DATA_FULL
 MOCK_CURRENT_DATE = date(year=2026, month=7, day=27)  # last date of the mocked data
 MOCK_CURRENT_DATE_2 = date(year=2026, month=7, day=25)  # first date of the mocked data
 
