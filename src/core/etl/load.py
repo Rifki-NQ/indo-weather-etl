@@ -14,7 +14,12 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncConnection
 from src.core.models.contexts import DBContext
 from src.core.models.domain_model import LocationModel, ForecastModel
 from src.core.models.protocols import TransformProtocol
-from src.core.exceptions import DBNotInitializedError, DBAlreadyInitializedError
+from src.core.exceptions import (
+    DBNotInitializedError,
+    DBAlreadyInitializedError,
+    DBEngineCreationFailedError,
+    DBSetupFailedError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,14 +33,25 @@ class LoadForecast:
         """Must be called once before load_transformed_forecast()."""
         if self._db is not None:
             raise DBAlreadyInitializedError("setup_db() can only be called once")
-        engine = create_async_engine(url=db_url, pool_pre_ping=True)
-        metadata = MetaData()
-        location_table = self._define_forecast_location_table(metadata)
-        forecast_table = self._define_forecast_table(metadata)
-        async with engine.begin() as conn:
-            await conn.run_sync(metadata.create_all)
+        try:
+            engine = create_async_engine(
+                url=db_url, pool_size=10, max_overflow=5, pool_pre_ping=True
+            )
+            logger.debug("DB engine created")
+        except Exception as e:
+            raise DBEngineCreationFailedError(e) from e
+        try:
+            metadata = MetaData()
+            location_table = self._define_forecast_location_table(metadata)
+            forecast_table = self._define_forecast_table(metadata)
+            async with engine.begin() as conn:
+                await conn.run_sync(metadata.create_all)
             self._db = DBContext(engine, location_table, forecast_table)
-        return self._db
+            return self._db
+        except Exception as e:
+            logger.debug("DB engine disposed due to setup_db() failure")
+            await engine.dispose()
+            raise DBSetupFailedError(e) from e
 
     async def load_transformed_forecast(self, adm4_code: str) -> None:
         db = self._get_db()
@@ -51,7 +67,14 @@ class LoadForecast:
                 await self._insert_or_update_forecast(
                     conn, db.forecast_table, single_forecast
                 )
-            logger.info(f"Load: forecast for {forecast_location.adm4_code} commited")
+        logger.info(f"Load: forecast for {forecast_location.adm4_code} commited")
+
+    async def close_db(self) -> None:
+        if self._db is None:
+            raise DBNotInitializedError("setup_db() has not called yet")
+        await self._db.engine.dispose()
+        logger.debug("DB engine disposed")
+        self._db = None
 
     def _get_db(self) -> DBContext:
         """

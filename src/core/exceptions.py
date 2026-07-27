@@ -73,6 +73,22 @@ class DBAlreadyInitializedError(LoaderError):
         super().__init__(f"Error: {message}")
 
 
+class DBEngineCreationFailedError(LoaderError):
+    """Raised when create_async_engine() is failed"""
+
+    def __init__(self, exc: Exception) -> None:
+        self.exc = exc
+        super().__init__(f"Error: engine creation failed, caused by: {repr(exc)}")
+
+
+class DBSetupFailedError(LoaderError):
+    """Raised when the setup_db() is failed or there is an error raised inside it"""
+
+    def __init__(self, exc: Exception) -> None:
+        self.exc = exc
+        super().__init__(f"Error: setup_db() failed, caused by: {repr(exc)}")
+
+
 class NotFileError(FileHandlingError):
     """Raised when the given filepath is not a file"""
 

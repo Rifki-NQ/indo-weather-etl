@@ -60,9 +60,12 @@ async def run_app(adm4_codes_path: str, db_url: str) -> None:
         transformer = TransformForecast(extractor)
         loader = LoadForecast(transformer)
         db = await loader.setup_db(db_url)
-        await delete_past_forecasts(db, get_current_datetime())
-        runner = ETLRunner(loader)
-        await runner.run_batch(yield_csv_value(Path(adm4_codes_path), "Kode"))
+        try:
+            await delete_past_forecasts(db, get_current_datetime())
+            runner = ETLRunner(loader)
+            await runner.run_batch(yield_csv_value(Path(adm4_codes_path), "Kode"))
+        finally:
+            await loader.close_db()
     logger.info("App finished successfully")
 
 
