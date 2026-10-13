@@ -4,6 +4,29 @@ An ETL Pipeline designed to extract data from public weather forecast API provid
 
 ---
 
+## Table of Contents
+
+- [Installation](#installation)
+- [Environment Variables](#environment-variables)
+- [Usage](#usage)
+- [Architecture Overview](#architecture-overview)
+  - [Extract Layer](#extract-layer)
+  - [Transform Layer](#transform-layer)
+  - [Load Layer](#load-layer)
+  - [Runner Layer](#runner-layer)
+  - [Additional Layer](#additional-layer)
+- [Running Tests](#running-tests)
+  - [Running Full Tests](#running-full-tests)
+  - [Running Non-Integration Tests Only](#running-non-integration-tests-only)
+  - [Running Integration Tests Only](#running-integration-tests-only)
+- [Run with systemd](#run-with-systemd)
+  - [1. Create the service unit](#1-create-the-service-unit)
+  - [2. Create the timer unit](#2-create-the-timer-unit)
+  - [3. Enable the timer](#3-enable-the-timer)
+  - [4. Verify](#4-verify)
+
+---
+
 ## Installation
 
 ```bash
@@ -158,6 +181,93 @@ pytest -m "not integration" tests/
 
 ```bash
 pytest -m "integration" tests/
+```
+
+---
+
+### Run with systemd
+
+You can run the pipeline unattended on a VPS or server using a systemd service and timer. The service defines *what* to run, and the timer defines *when* (every 4 hours).
+
+> **Prerequisite:** complete the [Installation](#installation) steps first.
+
+#### 1. Create the service unit
+
+```bash
+sudo nano /etc/systemd/system/indo-weather-etl.service
+```
+
+Paste the following:
+
+```ini
+[Unit]
+Description=Indo Weather ETL - a BMKG weather forecast data pipeline
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=your_username
+WorkingDirectory=/path/to/indo-weather-etl
+ExecStart=/path/to/indo-weather-etl/.venv/bin/run_etl
+Restart=on-failure
+RestartSec=30
+```
+
+Then replace:
+
+- `/path/to/indo-weather-etl` with the **absolute** path to the project (systemd requires absolute paths in `ExecStart`)
+
+- `your_username` with the user that owns the project
+
+Save with `Ctrl+O`, `Enter`, then exit with `Ctrl+X`.
+
+#### 2. Create the timer unit
+
+```bash
+sudo nano /etc/systemd/system/indo-weather-etl.timer
+```
+
+Paste the following:
+
+```ini
+[Unit]
+Description=Run indo-weather-etl every 4 hours
+
+[Timer]
+OnCalendar=*-*-* 00/4:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+This runs the service every 4 hours (00:00, 04:00, 08:00, ...). `Persistent=true` makes systemd run a missed job after downtime, such as a reboot.
+
+Save and exit the same way.
+
+#### 3. Enable the timer
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now indo-weather-etl.timer
+```
+
+`enable` makes the timer start on boot, and `--now` starts it immediately.
+
+#### 4. Verify
+
+Trigger one run manually and check the logs:
+
+```bash
+sudo systemctl start indo-weather-etl.service
+journalctl -u indo-weather-etl.service -n 50
+```
+
+Confirm the next scheduled run:
+
+```bash
+systemctl list-timers indo-weather-etl.timer
 ```
 
 ---
