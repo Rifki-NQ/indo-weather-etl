@@ -1,8 +1,9 @@
-from typing import Protocol
 from collections.abc import AsyncIterable
+from typing import Protocol
+
 from src.core.models.contexts import DBContext
-from src.core.models.raw_model import RawLocation, RawForecast
-from src.core.models.domain_model import LocationModel, ForecastModel
+from src.core.models.domain_model import ForecastModel, LocationModel
+from src.core.models.raw_model import RawForecast, RawLocation
 
 
 class ExtractProtocol(Protocol):

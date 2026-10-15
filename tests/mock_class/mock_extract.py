@@ -1,13 +1,14 @@
 import asyncio
 from collections.abc import AsyncIterable
+
+from src.core.models.raw_model import RawForecast, RawLocation
 from tests.mock_data.mock_flattened_data import (
     MOCKED_FORECAST_LOCATION_DATA_A,
-    MOCKED_WEATHER_FORECAST_DATA_A,
     MOCKED_FORECAST_LOCATION_DATA_B,
+    MOCKED_WEATHER_FORECAST_DATA_A,
     MOCKED_WEATHER_FORECAST_DATA_B,
     MOCKED_WEATHER_FORECAST_DATA_FULL,
 )
-from src.core.models.raw_model import RawLocation, RawForecast
 
 
 class MockExtractForecast:

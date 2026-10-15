@@ -1,7 +1,9 @@
-from typing import Any
 from collections.abc import Sequence
-from sqlalchemy import Row, MetaData, select
+from typing import Any
+
+from sqlalchemy import MetaData, Row, select
 from sqlalchemy.ext.asyncio import AsyncConnection
+
 from src.core.etl.load import LoadForecast
 
 

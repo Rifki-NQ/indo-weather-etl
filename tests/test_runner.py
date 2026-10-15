@@ -1,19 +1,19 @@
 import asyncio
 import logging
-import pytest
 from unittest.mock import AsyncMock, patch
-from tests.paths import mock_data_dir
+
+import pytest
+
+from src.core.exceptions import InvalidAdm4CodeError
 from src.core.runner import ETLRunner
 from src.core.utils import yield_csv_value
-from src.core.exceptions import InvalidAdm4CodeError
-
+from tests.paths import mock_data_dir
 
 MOCK_ADM4_CODES_PATH = mock_data_dir() / "mock_adm4_codes.csv"
 
 
 async def mock_loader_delay(adm4_code: str) -> None:
     await asyncio.sleep(0.1)
-    return None
 
 
 @pytest.fixture

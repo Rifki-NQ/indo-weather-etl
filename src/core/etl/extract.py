@@ -1,16 +1,18 @@
-import httpx
 import asyncio
 import logging
-from pydantic import ValidationError
-from typing import Any
 from collections.abc import AsyncIterable
-from src.core.models.raw_model import RawForecast, RawLocation
+from typing import Any
+
+import httpx
+from pydantic import ValidationError
+
 from src.core.exceptions import (
-    MaxRetryAttemptError,
-    InvalidAdm4CodeError,
-    EmptyForecastDataError,
     AllForecastDataMalformedError,
+    EmptyForecastDataError,
+    InvalidAdm4CodeError,
+    MaxRetryAttemptError,
 )
+from src.core.models.raw_model import RawForecast, RawLocation
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +61,7 @@ class ExtractForecast:
                     await asyncio.sleep(backoff_value)
                     continue
             except httpx.HTTPError as e:
-                logger.warning(f"Extractor: http error occured: {repr(e)}")
+                logger.warning(f"Extractor: http error occured: {e!r}")
             logger.info(
                 f"Extractor: retry attempt: {attempt + 1}, after {retry_delay} seconds"
             )

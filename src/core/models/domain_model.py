@@ -1,4 +1,4 @@
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
 
 
@@ -27,7 +27,7 @@ class ForecastModel:
     analysis_datetime: datetime  # datetime for the forecast analysis
     adm4_code: str  # district level four code, the forecast location
     temperature: int  # temperature in celcius
-    total_cloud_coverage: int | None # percentage unit
+    total_cloud_coverage: int | None  # percentage unit
     total_precipitation: float | None  # mm unit
     weather_description: str | None
     weather_description_eng: str | None
@@ -36,7 +36,7 @@ class ForecastModel:
     wind_direction_compass_to: str | None  # direction to
     wind_speed: float | None  # km/h unit
     humidity: int | None  # percentage
-    visibility: int | None # meters unit
+    visibility: int | None  # meters unit
     updated_at: datetime  # datetime for the forecast last update
     created_at: datetime  # datetime for the forecast creation
 

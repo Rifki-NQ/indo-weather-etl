@@ -1,23 +1,24 @@
-import pytest
-import pytest_asyncio
 import logging
-from dotenv import load_dotenv
-from unittest.mock import patch
+from collections.abc import AsyncGenerator, Sequence
 from datetime import datetime
 from typing import Any
-from collections.abc import Sequence, AsyncGenerator
-from sqlalchemy import Connection, Row, select, inspect
-from tests.utils import drop_all_tables, read_forecast_table_rows
+from unittest.mock import patch
+
+import pytest
+import pytest_asyncio
+from dotenv import load_dotenv
+from sqlalchemy import Connection, Row, inspect, select
+
+from src.core.etl.load import LoadForecast
+from src.core.etl.transform import TransformForecast
+from src.core.exceptions import DBAlreadyInitializedError, DBNotInitializedError
+from src.main import get_env
 from tests.mock_class.mock_extract import (
     MockExtractForecast,
-    MockExtractForecastBA,
     MockExtractForecastAB,
+    MockExtractForecastBA,
 )
-from src.main import get_env
-from src.core.etl.transform import TransformForecast
-from src.core.etl.load import LoadForecast
-from src.core.exceptions import DBNotInitializedError, DBAlreadyInitializedError
-
+from tests.utils import drop_all_tables, read_forecast_table_rows
 
 pytestmark = pytest.mark.integration
 

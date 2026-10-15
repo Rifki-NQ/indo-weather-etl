@@ -1,11 +1,12 @@
-import pytest
-from unittest.mock import MagicMock, patch
+from collections.abc import AsyncGenerator, AsyncIterable
 from datetime import datetime
-from collections.abc import AsyncIterable, AsyncGenerator
-from tests.mock_class.mock_extract import MockExtractForecast
-from src.core.etl.transform import TransformForecast
-from src.core.models.domain_model import LocationModel, ForecastModel
+from unittest.mock import MagicMock, patch
 
+import pytest
+
+from src.core.etl.transform import TransformForecast
+from src.core.models.domain_model import ForecastModel, LocationModel
+from tests.mock_class.mock_extract import MockExtractForecast
 
 MOCK_CURRENT_DATETIME = datetime(2025, 12, 30, 12, 30, 30)
 

@@ -1,11 +1,12 @@
 import asyncio
 import logging
-from datetime import datetime
 from collections.abc import AsyncIterable
-from src.core.models.raw_model import RawLocation, RawForecast
-from src.core.utils import get_current_datetime
-from src.core.models.domain_model import LocationModel, ForecastModel
+from datetime import datetime
+
+from src.core.models.domain_model import ForecastModel, LocationModel
 from src.core.models.protocols import ExtractProtocol
+from src.core.models.raw_model import RawForecast, RawLocation
+from src.core.utils import get_current_datetime
 
 logger = logging.getLogger(__name__)
 

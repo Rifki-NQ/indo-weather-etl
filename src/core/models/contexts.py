@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 from sqlalchemy import Table
 from sqlalchemy.ext.asyncio import AsyncEngine
 

@@ -4,19 +4,13 @@ from pathlib import Path
 class DomainError(Exception):
     """Base exception for all business / logic errors"""
 
-    pass
-
 
 class ExtractorError(DomainError):
     """Base exception for extractor error"""
 
-    pass
-
 
 class LoaderError(DomainError):
     """Base exception for loader error"""
-
-    pass
 
 
 class FileHandlingError(DomainError):
@@ -78,7 +72,7 @@ class DBEngineCreationFailedError(LoaderError):
 
     def __init__(self, exc: Exception) -> None:
         self.exc = exc
-        super().__init__(f"Error: engine creation failed, caused by: {repr(exc)}")
+        super().__init__(f"Error: engine creation failed, caused by: {exc!r}")
 
 
 class DBSetupFailedError(LoaderError):
@@ -86,7 +80,7 @@ class DBSetupFailedError(LoaderError):
 
     def __init__(self, exc: Exception) -> None:
         self.exc = exc
-        super().__init__(f"Error: setup_db() failed, caused by: {repr(exc)}")
+        super().__init__(f"Error: setup_db() failed, caused by: {exc!r}")
 
 
 class NotFileError(FileHandlingError):

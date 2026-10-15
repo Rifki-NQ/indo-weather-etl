@@ -1,8 +1,9 @@
 import asyncio
 import logging
 from collections.abc import Iterable
-from src.core.models.protocols import LoadProtocol
+
 from src.core.exceptions import DomainError, InvalidAdm4CodeError
+from src.core.models.protocols import LoadProtocol
 
 logger = logging.getLogger(__name__)
 

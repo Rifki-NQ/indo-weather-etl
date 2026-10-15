@@ -1,20 +1,22 @@
-import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
 import logging
-from httpx import HTTPError, HTTPStatusError
 from typing import Any
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from httpx import HTTPError, HTTPStatusError
+
+from src.core.etl.extract import ExtractForecast
+from src.core.exceptions import (
+    AllForecastDataMalformedError,
+    EmptyForecastDataError,
+    InvalidAdm4CodeError,
+    MaxRetryAttemptError,
+)
+from src.core.models.raw_model import RawForecast
 from tests.mock_data.mock_forecast_data import (
     MOCKED_FORECAST_DATA,
-    MOCKED_FORECAST_WITH_ONE_MALFORED_DATA,
     MOCKED_FORECAST_WITH_ALL_MALFORED_DATA,
-)
-from src.core.etl.extract import ExtractForecast
-from src.core.models.raw_model import RawForecast
-from src.core.exceptions import (
-    MaxRetryAttemptError,
-    InvalidAdm4CodeError,
-    EmptyForecastDataError,
-    AllForecastDataMalformedError,
+    MOCKED_FORECAST_WITH_ONE_MALFORED_DATA,
 )
 
 RATE_LIMITED_BACKOFF = ExtractForecast.RATE_LIMITED_BACKOFF
@@ -56,11 +58,13 @@ async def test_retry_then_succeed(extractor: ExtractForecast) -> None:
 async def test_invalid_adm4_code(extractor: ExtractForecast) -> None:
     mock_response = MagicMock()
     mock_response.status_code = 404
-    with patch.object(
-        extractor.client, "get", new_callable=AsyncMock, return_value=mock_response
+    with (
+        patch.object(
+            extractor.client, "get", new_callable=AsyncMock, return_value=mock_response
+        ),
+        pytest.raises(InvalidAdm4CodeError),
     ):
-        with pytest.raises(InvalidAdm4CodeError):
-            await extractor._request("")  # pyright: ignore[reportPrivateUsage]
+        await extractor._request("")  # pyright: ignore[reportPrivateUsage]
 
 
 async def test_convert_all_forecast_with_all_data_valid(

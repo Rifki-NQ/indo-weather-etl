@@ -1,14 +1,16 @@
+from collections.abc import AsyncGenerator
+from datetime import date
+
 import pytest
 import pytest_asyncio
 from dotenv import load_dotenv
-from datetime import date
-from collections.abc import AsyncGenerator
-from tests.utils import drop_all_tables, read_forecast_table_rows
-from tests.mock_class.mock_extract import MockExtractForecastFull
-from src.main import get_env
-from src.core.etl.transform import TransformForecast
-from src.core.etl.load import LoadForecast
+
 from src.core.db_balancer import delete_past_forecasts
+from src.core.etl.load import LoadForecast
+from src.core.etl.transform import TransformForecast
+from src.main import get_env
+from tests.mock_class.mock_extract import MockExtractForecastFull
+from tests.utils import drop_all_tables, read_forecast_table_rows
 
 pytestmark = pytest.mark.integration
 
